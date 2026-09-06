@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Build and distribution artifacts
+dist/
+dist.rar
+dist.zip
+*.rar
+*.zip
+
+# Local configuration & logs (contains credentials)
+config.json
+logs/
+*.log
+
+# Editor & IDE settings
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,4 @@
+2026-09-05T18:48:24.033Z	[change-2fa]	FAIL	invalid-test-line | ly do: invalid combo format (expected email|pass|2fa)
+2026-09-05T18:48:24.048Z	[change-2fa-team]	FAIL	invalid-test-line | ly do: invalid combo format (expected email|pass|2fa)
+2026-09-05T18:48:24.052Z	[check-plan]	FAIL	invalid-test-line | status=bad format | error=invalid combo format (expected email|pass|2fa)
+2026-09-05T18:48:24.056Z	[check-plan]	FAIL	invalid-test-line | status=bad format | error=invalid combo format (expected email|pass|2fa)

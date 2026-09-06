@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPTServiceLite</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: #14161a; color: #e6e6e6;
+    font: 14px/1.5 -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  }
+  h1 { font-size: 18px; margin: 0 0 16px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #333; margin-bottom: 16px; }
+  .tab {
+    padding: 8px 16px; cursor: pointer; background: #1c1e24; border: 1px solid #333;
+    border-bottom: none; border-radius: 6px 6px 0 0; color: #aaa;
+  }
+  .tab.active { background: #2a2d36; color: #fff; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .row { display: flex; gap: 16px; }
+  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 12px; color: #999; }
+  label.ok-label { color: #5fd77a; }
+  label.fail-label { color: #e0666b; }
+  textarea {
+    width: 100%; height: 380px; background: #1c1e24; color: #e6e6e6; border: 1px solid #333;
+    border-radius: 6px; padding: 8px; font: 12px/1.4 Consolas, monospace; resize: vertical;
+  }
+  textarea.proxy-box { height: 90px; }
+  .actions { display: flex; gap: 8px; align-items: center; }
+  button {
+    background: #3a6df0; color: #fff; border: none; border-radius: 6px; padding: 8px 16px;
+    cursor: pointer; font-size: 13px;
+  }
+  button:disabled { background: #444; cursor: not-allowed; }
+  button.secondary { background: #333; }
+  .status { font-size: 12px; color: #999; }
+  .hint { font-size: 11px; color: #777; margin: 0; }
+</style>
+</head>
+<body>
+<h1>GPTServiceLite <span style="font-size:12px;color:#777;font-weight:400;">— tác giả: <a href="https://t.me/sanlee035" target="_blank" rel="noopener" style="color:#6ea8fe;">@sanlee035</a></span></h1>
+<div class="tabs">
+  <div class="tab active" data-tab="change-2fa">Change 2FA</div>
+  <div class="tab" data-tab="change-2fa-team">Change 2FA Team / K12</div>
+  <div class="tab" data-tab="check-plan">Check Plan</div>
+  <div class="tab" data-tab="logs">Logs</div>
+  <div class="tab" data-tab="config">Cấu hình</div>
+</div>
+
+<div class="panel" data-panel="logs">
+  <div class="col" style="max-width: 640px;">
+    <div class="actions">
+      <label style="flex:1">Nhật ký theo ngày (lưu trên máy chủ, mọi kết quả OK/FAIL) — tải về để khỏi mất acc</label>
+      <button id="logs-refresh" class="secondary">Làm mới</button>
+    </div>
+    <ul id="logs-list" style="list-style:none; padding:0; margin:0;"></ul>
+    <p class="hint">Mỗi lần Run, từng dòng kết quả được ghi ngay vào file <code>logs/YYYY-MM-DD.txt</code> trước khi hiện lên UI — kể cả đóng trình duyệt giữa chừng vẫn còn. Dòng OK của Change 2FA chứa <code>email|pass|2fa_mới</code>.</p>
+  </div>
+</div>
+
+<div class="panel" data-panel="config">
+  <div class="col" style="max-width: 640px;">
+    <label>Proxy mặc định (mỗi dòng 1 proxy) — lưu vào máy, tự đổ vào các tab khi mở</label>
+    <textarea id="config-proxies" placeholder="host:port hoặc user:pass@host:port hoặc http://..."></textarea>
+    <div class="actions">
+      <button id="config-save">Lưu</button>
+      <span id="config-status" class="status"></span>
+    </div>
+    <p class="hint">Lưu vào <code>config.json</code> cạnh app. Sửa proxy trong các tab Change 2FA / Check Plan chỉ áp dụng cho lần chạy đó; muốn nhớ lâu thì lưu ở đây.</p>
+  </div>
+</div>
+
+<template id="panel-template">
+  <div class="row">
+    <div class="col">
+      <label>Input (mỗi dòng: email|pass|2fa)</label>
+      <textarea class="input" placeholder="email|password|2fa_secret"></textarea>
+      <label>Proxy (mỗi dòng 1 proxy, xoay vòng theo combo — để trống = ko proxy)</label>
+      <textarea class="proxy proxy-box" placeholder="host:port hoặc user:pass@host:port hoặc http://..."></textarea>
+      <div class="actions">
+        <button class="run">Run</button>
+        <span class="status"></span>
+      </div>
+      <p class="hint"></p>
+    </div>
+    <div class="col">
+      <label class="ok-label"></label>
+      <textarea class="output-ok" readonly></textarea>
+      <div class="actions">
+        <button class="copy-ok secondary">Copy</button>
+        <button class="download-ok secondary">Download .txt</button>
+      </div>
+    </div>
+    <div class="col">
+      <label class="fail-label"></label>
+      <textarea class="output-fail" readonly></textarea>
+      <div class="actions">
+        <button class="copy-fail secondary">Copy</button>
+        <button class="download-fail secondary">Download .txt</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<div id="panels"></div>
+
+<script>
+function line(parts) { return parts.join('|'); }
+
+function format2fa(r) {
+  if (r.ok) return line([r.email, r.password, r.newTotp]);
+  const result = `${r.email} | ${r.activationUncertain ? 'CHƯA XÁC NHẬN' : 'FAIL'}: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
+  return r.recoveryTotp
+    ? `${result} | combo_du_phong: ${line([r.email, r.password, r.recoveryTotp])}`
+    : result;
+}
+
+function planLabel(plan) {
+  return { free: 'Free', plus: 'Plus', pro: 'Pro', go: 'Go', team: 'Team', business: 'Business', enterprise: 'Enterprise', edu: 'Edu', k12: 'K12', unknown: 'Unknown' }[plan] || plan || 'Unknown';
+}
+
+function formatPlan(r) {
+  const tag = r.combo || r.email;
+  if (!r.ok) return `${tag} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || r.status || 'unknown'}`;
+  const plans = r.plans && r.plans.length ? r.plans : [r.plan || 'unknown'];
+  const parts = [tag, `plan=${planLabel(r.plan)}`, `plans=${plans.map(planLabel).join(',')}`];
+  if (r.workspaces && r.workspaces.length) {
+    const workspaces = r.workspaces.map((w) => {
+      const name = String(w.name || w.id || 'Workspace').replace(/[\r\n|]/g, ' ');
+      const details = [planLabel(w.plan)];
+      if (w.days_left != null) details.push(`days_left=${w.days_left}`);
+      return `${name} (${details.join(', ')})`;
+    });
+    parts.push(`workspaces=${workspaces.join('; ')}`);
+  }
+  if (r.daysLeft != null) parts.push(`days_left=${r.daysLeft}`);
+  if (r.remainingPercent != null) parts.push(`remaining=${r.remainingPercent}%`);
+  if (r.plansComplete === false) parts.push('CHƯA ĐỦ DỮ LIỆU: chưa kiểm tra được mọi workspace');
+  if (r.warnings && r.warnings.length) parts.push(`warnings=${r.warnings.join('; ')}`);
+  return parts.join(' | ');
+}
+
+async function readResults(body, onResult) {
+  if (!body) throw new Error('Máy chủ không trả luồng kết quả');
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  function consume(raw) {
+    if (raw.trim()) onResult(JSON.parse(raw));
+  }
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n')) >= 0) {
+        consume(buf.slice(0, idx));
+        buf = buf.slice(idx + 1);
+      }
+    }
+    buf += decoder.decode();
+    consume(buf);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+function completionStatus(okCount, failCount, total) {
+  const received = okCount + failCount;
+  return received < total
+    ? `Chưa đủ kết quả: ${received}/${total} (OK ${okCount} / FAIL ${failCount}). Xem Logs trước khi chạy lại.`
+    : `Xong: OK ${okCount} / FAIL ${failCount}`;
+}
+
+const TABS = [
+  {
+    key: 'change-2fa', endpoint: '/api/change-2fa',
+    hint: 'Thành công: email|pass|new2fa. Password giữ nguyên. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong để kiểm tra đăng nhập.',
+    okLabel: 'OK', failLabel: 'FAIL',
+    isOk: (r) => r.ok,
+    formatOne: format2fa
+  },
+  {
+    key: 'change-2fa-team', endpoint: '/api/change-2fa-team',
+    hint: 'Cho tài khoản Team / Business / Enterprise / Edu / K12 dùng password + TOTP. Đổi 2FA áp dụng cho tài khoản, gồm mọi workspace. Tài khoản bắt buộc SSO không hỗ trợ. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong.',
+    okLabel: 'OK', failLabel: 'FAIL',
+    isOk: (r) => r.ok,
+    formatOne: format2fa
+  },
+  {
+    key: 'check-plan', endpoint: '/api/check-plan',
+    hint: 'Chỉ đọc. Hiển thị gói của workspace đang chọn và các workspace khác: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Unknown khi API không xác định được gói; thời hạn và quota chỉ hiện khi API cung cấp.',
+    okLabel: 'OK — PLAN', failLabel: 'FAIL',
+    isOk: (r) => r.ok,
+    formatOne: formatPlan
+  }
+];
+
+const panelsEl = document.getElementById('panels');
+const tmpl = document.getElementById('panel-template');
+
+for (const tab of TABS) {
+  const node = tmpl.content.cloneNode(true);
+  const panel = document.createElement('div');
+  panel.className = 'panel' + (tab.key === TABS[0].key ? ' active' : '');
+  panel.dataset.panel = tab.key;
+  panel.appendChild(node);
+  panelsEl.appendChild(panel);
+
+  const input = panel.querySelector('.input');
+  const proxyInput = panel.querySelector('.proxy');
+  const okOutput = panel.querySelector('.output-ok');
+  const failOutput = panel.querySelector('.output-fail');
+  const runBtn = panel.querySelector('.run');
+  const statusEl = panel.querySelector('.status');
+  const hintEl = panel.querySelector('.hint');
+
+  hintEl.textContent = tab.hint;
+  panel.querySelector('.ok-label').textContent = tab.okLabel;
+  panel.querySelector('.fail-label').textContent = tab.failLabel;
+
+  function appendLine(el, text) {
+    el.value += (el.value ? '\n' : '') + text;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  runBtn.addEventListener('click', async () => {
+    const combos = input.value;
+    if (!combos.trim()) return;
+    const total = Math.min(combos.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length, 50);
+    runBtn.disabled = true;
+    okOutput.value = '';
+    failOutput.value = '';
+    let okCount = 0, failCount = 0;
+    let waitingSince = Date.now();
+    function showProgress() {
+      const seconds = Math.floor((Date.now() - waitingSince) / 1000);
+      statusEl.textContent = `Đang chạy... ${okCount + failCount}/${total} (OK ${okCount} / FAIL ${failCount}) — chờ kết quả ${seconds}s`;
+    }
+    const progressTimer = setInterval(showProgress, 1000);
+    statusEl.textContent = `Đang chạy... 0/${total}`;
+    try {
+      const res = await fetch(tab.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ combos, proxies: proxyInput.value })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        statusEl.textContent = 'Lỗi: ' + (data.error || res.statusText);
+        return;
+      }
+      await readResults(res.body, (r) => {
+        if (tab.isOk(r)) { appendLine(okOutput, tab.formatOne(r)); okCount++; }
+        else { appendLine(failOutput, tab.formatOne(r)); failCount++; }
+        waitingSince = Date.now();
+        showProgress();
+      });
+      statusEl.textContent = completionStatus(okCount, failCount, total);
+    } catch (e) {
+      statusEl.textContent = `Lỗi: ${e.message}. Đã nhận ${okCount + failCount}/${total}; xem Logs trước khi chạy lại.`;
+    } finally {
+      clearInterval(progressTimer);
+      runBtn.disabled = false;
+    }
+  });
+
+  function wireColumn(copySel, downloadSel, output, name) {
+    panel.querySelector(copySel).addEventListener('click', () => navigator.clipboard.writeText(output.value));
+    panel.querySelector(downloadSel).addEventListener('click', () => {
+      const blob = new Blob([output.value], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${tab.key}-${name}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+  wireColumn('.copy-ok', '.download-ok', okOutput, 'ok');
+  wireColumn('.copy-fail', '.download-fail', failOutput, 'fail');
+}
+
+document.querySelectorAll('.tab').forEach((tabEl) => {
+  tabEl.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+    tabEl.classList.add('active');
+    document.querySelector(`.panel[data-panel="${tabEl.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+// Config: load saved proxies on startup, prefill every run tab's proxy box, and let the Config
+// tab persist them back to config.json.
+const cfgProxies = document.getElementById('config-proxies');
+const cfgStatus = document.getElementById('config-status');
+fetch('/api/config').then((r) => r.json()).then((cfg) => {
+  const proxies = cfg.proxies || '';
+  cfgProxies.value = proxies;
+  document.querySelectorAll('.proxy').forEach((el) => { if (!el.value) el.value = proxies; });
+}).catch(() => {});
+
+// Logs: list daily files with download links.
+const logsList = document.getElementById('logs-list');
+async function loadLogs() {
+  logsList.innerHTML = '<li class="hint">Đang tải...</li>';
+  try {
+    const files = await fetch('/api/logs').then((r) => r.json());
+    if (!files.length) { logsList.innerHTML = '<li class="hint">Chưa có log nào.</li>'; return; }
+    logsList.innerHTML = files.map((f) => {
+      const kb = (f.size / 1024).toFixed(1);
+      return `<li style="padding:6px 0; border-bottom:1px solid #2a2d36;"><a href="/api/logs/${f.name}" download style="color:#6ea8fe;">${f.name}</a> <span class="hint">(${kb} KB)</span></li>`;
+    }).join('');
+  } catch (e) {
+    logsList.innerHTML = `<li class="hint">Lỗi: ${e.message}</li>`;
+  }
+}
+document.getElementById('logs-refresh').addEventListener('click', loadLogs);
+document.querySelector('.tab[data-tab="logs"]').addEventListener('click', loadLogs);
+
+document.getElementById('config-save').addEventListener('click', async () => {
+  cfgStatus.textContent = 'Đang lưu...';
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proxies: cfgProxies.value })
+    });
+    cfgStatus.textContent = res.ok ? 'Đã lưu ✓' : 'Lỗi lưu';
+    if (res.ok) document.querySelectorAll('.proxy').forEach((el) => { el.value = cfgProxies.value; });
+  } catch (e) {
+    cfgStatus.textContent = 'Lỗi: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>

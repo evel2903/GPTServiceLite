@@ -1,0 +1,23 @@
+{
+  "name": "gptservicelite",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone web app for personal/workspace ChatGPT account change-2FA and Check Plan, no auth/db/bot.",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "build:exe": "pkg . --targets node18-win-x64 --output dist/gptservicelite.exe",
+    "build:portable": "powershell -ExecutionPolicy Bypass -File build-portable.ps1"
+  },
+  "pkg": {
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}
