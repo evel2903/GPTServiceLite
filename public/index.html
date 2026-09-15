@@ -37,11 +37,12 @@
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
   }
-  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .brand-title { margin: 0; font-size: 20px; font-weight: 700; color: #0369a1; letter-spacing: -0.02em; }
-  .brand-sub { font-size: 12px; color: var(--muted-foreground); font-weight: 400; }
+  .brand-sub { font-size: 12px; color: var(--muted-foreground); font-weight: 400; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .brand-sub a { color: var(--primary); text-decoration: none; font-weight: 600; }
   .brand-sub a:hover { text-decoration: underline; color: var(--primary-hover); }
+  .brand-sep { color: #cbd5e1; font-size: 10px; }
   .header-actions { display: flex; align-items: center; gap: 12px; }
   .lang-switcher {
     display: inline-flex; background: #e2e8f0; border-radius: 20px; padding: 2px; border: 1px solid #cbd5e1;
@@ -187,7 +188,13 @@
   <header class="shadcn-header">
     <div class="brand">
       <h1 class="brand-title">Evel GPT Service Lite</h1>
-      <span class="brand-sub">— {{ t.author }} <a href="https://t.me/sanlee035" target="_blank" rel="noopener">@sanlee035</a></span>
+      <span class="brand-sub">
+        <span>— {{ t.author }} <a href="https://t.me/sanlee035" target="_blank" rel="noopener">@sanlee035</a></span>
+        <span class="brand-sep">•</span>
+        <span>{{ t.store }} <a href="https://t.me/EvelStoreBot" target="_blank" rel="noopener">@EvelStoreBot</a></span>
+        <span class="brand-sep">•</span>
+        <span>{{ t.chatGroup }} <a href="https://t.me/evelstorechat" target="_blank" rel="noopener">@evelstorechat</a></span>
+      </span>
     </div>
     <div class="header-actions">
       <div class="lang-switcher">
@@ -460,7 +467,9 @@ if (typeof Vue !== 'undefined') {
 
   const I18N = {
     en: {
-      author: 'author:',
+      author: 'Author:',
+      store: 'Store:',
+      chatGroup: 'Chat Group:',
       tabChange2fa: 'Change 2FA',
       tabChange2faTeam: 'Change 2FA Team / K12',
       tabCheckPlan: 'Check Plan',
@@ -516,7 +525,9 @@ if (typeof Vue !== 'undefined') {
       badgeNormal: (v) => `v${v}`
     },
     vi: {
-      author: 'tác giả:',
+      author: 'Tác giả:',
+      store: 'Store:',
+      chatGroup: 'Nhóm Chat:',
       tabChange2fa: 'Change 2FA',
       tabChange2faTeam: 'Change 2FA Team / K12',
       tabCheckPlan: 'Check Plan',
