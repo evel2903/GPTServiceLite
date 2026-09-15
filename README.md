@@ -9,6 +9,7 @@ A high-performance, lightweight, zero-database automation suite and local web se
 - **Change 2FA (Team / Workspace)** — Rotate TOTP 2FA factors within Team, Business, Enterprise, Edu, or K12 organization workspace contexts.
 - **Check Plan & Quotas** — Inspect active subscriptions across personal and organization workspaces (Free, Plus, Pro, Go, Team, Business, Enterprise, Edu, K12) with quota limits and expiry days.
 - **Retrieve Access Tokens** — Authenticate and retrieve live session Access Tokens (`chatgpt.com/api/auth/session`) without altering account credentials.
+- **Get 2FA Code** — Generate live 6-digit TOTP codes from full combos (`email|pass|secret`) or standalone 2FA keys.
 - **Logout All Sessions** — Terminate and invalidate all active browser, mobile app, and API sessions across all devices for an account.
 - **In-Place Portable Auto-Update** — Built-in zero-installer self-update mechanism with SHA-256 verification, atomic file swapping, health handshake (ACK), and automatic rollback.
 
@@ -104,6 +105,7 @@ The local web interface provides a tabbed dashboard:
 | **Change 2FA Team / K12** | Rotate 2FA under organization workspaces | `email\|password\|new_2fa_secret` |
 | **Check Plan** | Inspect subscription plans and quota details | `email\|plan=...\|plans=...\|workspaces=...` |
 | **Lấy Access Token** | Retrieve session Access Token | `email\|access_token` |
+| **Get 2FA** | Generate live TOTP codes from combo or secret key | `input\|2FA: 123456 (25s)` |
 | **Logout All Sessions** | Terminate all active device sessions | `email\|OK: logged out all sessions` |
 | **Logs** | View and download daily audit logs | `.txt` files |
 | **Cấu hình (Config)** | Persist default proxy list and custom update URL | Saved to `config.json` |
@@ -192,6 +194,7 @@ Upload all three files as assets to your GitHub Release tag (e.g. `v1.1.0`).
 - `POST /api/change-2fa-team` — Rotate TOTP secrets within organizational workspace context.
 - `POST /api/check-plan` — Inspect active subscription tiers and workspace quotas.
 - `POST /api/get-token` — Retrieve ChatGPT session Access Tokens.
+- `POST /api/get-2fa` — Batch generate live TOTP 2FA codes (NDJSON streaming).
 - `POST /api/logout-all` — Batch log out of all active device sessions (NDJSON streaming).
 
 ### System & Configuration

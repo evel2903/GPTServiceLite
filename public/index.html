@@ -222,11 +222,13 @@
             <label class="field-label">{{ t.inputLabel }}</label>
             <span class="badge-count" v-if="tabCombosCount(tab) > 0">{{ tabCombosCount(tab) }}</span>
           </div>
-          <textarea class="shadcn-textarea input-area" v-model="tab.combos" :placeholder="t.inputPlaceholder"></textarea>
-          <div class="card-header" style="margin-top: 6px;">
-            <label class="field-label">{{ t.proxyLabel }}</label>
+          <textarea class="shadcn-textarea input-area" v-model="tab.combos" :placeholder="tab.key === 'get-2fa' ? t.input2faPlaceholder : t.inputPlaceholder"></textarea>
+          <div v-if="!tab.noProxy">
+            <div class="card-header" style="margin-top: 6px;">
+              <label class="field-label">{{ t.proxyLabel }}</label>
+            </div>
+            <textarea class="shadcn-textarea proxy-area" v-model="tab.proxies" :placeholder="t.proxyPlaceholder"></textarea>
           </div>
-          <textarea class="shadcn-textarea proxy-area" v-model="tab.proxies" :placeholder="t.proxyPlaceholder"></textarea>
           <div class="action-bar">
             <button class="shadcn-btn btn-primary" :disabled="tab.running || !tab.combos.trim()" @click="runBatch(tab)">
               <span>{{ t.runBtn }}</span>
@@ -244,6 +246,7 @@
           <textarea class="shadcn-textarea output-area ok-area" v-model="tab.okOutput" readonly></textarea>
           <div class="action-bar">
             <button class="shadcn-btn btn-secondary" :disabled="!tab.okOutput" @click="copyText(tab.okOutput)">{{ t.copyBtn }}</button>
+            <button v-if="tab.key === 'get-2fa'" class="shadcn-btn btn-secondary" :disabled="!tab.okOutput" @click="copyCodesOnly(tab.okOutput)">{{ t.copyCodesBtn }}</button>
             <button class="shadcn-btn btn-secondary" :disabled="!tab.okOutput" @click="downloadText(tab.okOutput, tab.key + '-ok.txt')">{{ t.downloadBtn }}</button>
           </div>
         </div>
@@ -378,6 +381,15 @@ function formatLogoutAll(r, lang) {
   return `${tag} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
 }
 
+function format2faCode(r) {
+  const tag = r.input || r.combo || r.email || r.secret;
+  if (r.ok) {
+    const sec = r.remaining != null ? ` (${r.remaining}s)` : '';
+    return `${tag} | 2FA: ${r.code}${sec}`;
+  }
+  return `${tag} | FAIL: ${r.error || 'invalid 2fa'}`;
+}
+
 function formatToken(r) {
   if (r.ok) return line([r.email, r.accessToken]);
   return `${r.combo || r.email} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
@@ -481,6 +493,14 @@ const TABS = [
     okLabel: 'OK — LOGOUT ALL', failLabel: 'FAIL',
     isOk: (r) => r.ok,
     formatOne: formatLogoutAll
+  },
+  {
+    key: 'get-2fa', endpoint: '/api/get-2fa',
+    hint: 'Paste full combo (email|pass|2fa) or standalone 2FA secret key (one per line). Generates live 6-digit TOTP codes.',
+    okLabel: 'OK — 2FA CODE', failLabel: 'FAIL',
+    isOk: (r) => r.ok,
+    formatOne: format2faCode,
+    noProxy: true
   }
 ];
 
@@ -500,6 +520,9 @@ if (typeof Vue !== 'undefined') {
       tabCheckPlan: 'Check Plan',
       tabGetToken: 'Get Access Token',
       tabLogoutAll: 'Logout All Sessions',
+      tabGet2fa: 'Get 2FA',
+      copyCodesBtn: 'Copy Codes Only',
+      input2faPlaceholder: 'email|pass|secret OR JBSWY3DPEHPK3PXP (one per line)',
       tabLogs: 'Audit Logs',
       tabConfig: 'Settings',
       hint2fa: 'Success: email|pass|new2fa. Password unchanged. If UNCONFIRMED, retain previous credentials and backup combo to verify login.',
@@ -507,6 +530,7 @@ if (typeof Vue !== 'undefined') {
       hintCheckPlan: 'Read-only. Displays active subscription across selected and organization workspaces: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Quotas and remaining days displayed when provided by API.',
       hintGetToken: 'Login and retrieve ChatGPT Access Token from chatgpt.com/api/auth/session (does not alter account credentials). Output: email|access_token.',
       hintLogoutAll: 'Log out of all active browser, mobile app, and API sessions across all devices for this account. Output: email|OK: all sessions logged out successfully.',
+      hintGet2fa: 'Paste full combo (email|pass|2fa) or standalone 2FA secret key (one per line). Automatically extracts key and generates 6-digit TOTP code. Output: input | 2FA: 123456.',
       logsHeader: 'Daily audit logs stored on server (records every OK/FAIL outcome) — download to ensure credentials are never lost',
       logsRefresh: 'Refresh',
       logsHint: 'Each run writes result lines to logs/YYYY-MM-DD.txt before displaying on the UI. OK results for Change 2FA contain email|pass|new_2fa.',
@@ -560,6 +584,9 @@ if (typeof Vue !== 'undefined') {
       tabCheckPlan: 'Check Plan',
       tabGetToken: 'Lấy Access Token',
       tabLogoutAll: 'Đăng xuất tất cả thiết bị',
+      tabGet2fa: 'Lấy mã 2FA',
+      copyCodesBtn: 'Chỉ copy mã 6 số',
+      input2faPlaceholder: 'email|pass|secret HOẶC JBSWY3DPEHPK3PXP (mỗi dòng 1 mục)',
       tabLogs: 'Nhật ký (Logs)',
       tabConfig: 'Cấu hình',
       hint2fa: 'Thành công: email|pass|new2fa. Password giữ nguyên. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong để kiểm tra đăng nhập.',
@@ -626,6 +653,7 @@ if (typeof Vue !== 'undefined') {
         { key: 'check-plan', label: t.value.tabCheckPlan },
         { key: 'get-token', label: t.value.tabGetToken },
         { key: 'logout-all', label: t.value.tabLogoutAll },
+        { key: 'get-2fa', label: t.value.tabGet2fa },
         { key: 'logs', label: t.value.tabLogs },
         { key: 'config', label: t.value.tabConfig }
       ]);
@@ -654,6 +682,7 @@ if (typeof Vue !== 'undefined') {
         if (key === 'check-plan') return t.value.hintCheckPlan;
         if (key === 'get-token') return t.value.hintGetToken;
         if (key === 'logout-all') return t.value.hintLogoutAll;
+        if (key === 'get-2fa') return t.value.hintGet2fa;
         return '';
       }
 
@@ -776,6 +805,18 @@ if (typeof Vue !== 'undefined') {
         } finally {
           clearInterval(progressTimer);
           tab.running = false;
+        }
+      }
+
+      function copyCodesOnly(text) {
+        if (!text) return;
+        const codes = [];
+        for (const line of text.split('\n')) {
+          const m = line.match(/2FA:\s*([0-9]{6})/);
+          if (m) codes.push(m[1]);
+        }
+        if (codes.length) {
+          navigator.clipboard.writeText(codes.join('\n'));
         }
       }
 
@@ -973,6 +1014,7 @@ if (typeof Vue !== 'undefined') {
         setLanguage,
         runBatch,
         copyText,
+        copyCodesOnly,
         downloadText,
         loadLogs,
         saveConfig,

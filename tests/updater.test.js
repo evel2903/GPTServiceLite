@@ -151,6 +151,7 @@ test('startDownload downloads, verifies SHA-256 and extracts into staging', asyn
 });
 
 test('HTTP server exposes /api/update/status and handles /api/config updateUrl', async () => {
+  const originalConfig = await fs.readFile(path.join(__dirname, '../config.json'), 'utf8').catch(() => null);
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const port = server.address().port;
@@ -180,5 +181,6 @@ test('HTTP server exposes /api/update/status and handles /api/config updateUrl',
     assert.equal(cfg.proxies, 'proxy1:8080');
   } finally {
     await new Promise((resolve) => server.close(resolve));
+    if (originalConfig) await fs.writeFile(path.join(__dirname, '../config.json'), originalConfig, 'utf8');
   }
 });
