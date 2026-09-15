@@ -58,6 +58,10 @@ Remove-Item $updateStaging -Recurse -Force
 Write-Host "[3/4] Packaging full installation bundle..." -ForegroundColor Yellow
 $fullZip = Join-Path $releaseDir "gptservicelite-v$Version-windows-x64.zip"
 $fullDist = Join-Path $root "dist\gptservicelite"
+# Ensure dist executable is not locked by running process
+Stop-Process -Name "gptservicelite" -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 400
+
 if (Test-Path (Join-Path $fullDist "python")) {
     Copy-Item $builtExe $fullDist -Force
     Copy-Item (Join-Path $root "core") $fullDist -Recurse -Force
