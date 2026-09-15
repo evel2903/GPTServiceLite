@@ -52,7 +52,7 @@ async def logout_all_pure(email: str, password: str, totp_secret: str, *, logger
             return {
                 "ok": True,
                 "email": email,
-                "message": "Đã đăng xuất tất cả thiết bị thành công",
+                "message": "all sessions logged out successfully",
             }
         logger.warning("[logout_all] failed HTTP %s: %s", res.status_code, res.text[:200])
         return {

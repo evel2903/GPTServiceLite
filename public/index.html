@@ -348,11 +348,14 @@
 <script>
 function line(parts) { return parts.join('|'); }
 
-function format2fa(r) {
+function format2fa(r, lang) {
+  const isEn = (lang === 'en') || (typeof currentLang !== 'undefined' && currentLang === 'en');
   if (r.ok) return line([r.email, r.password, r.newTotp]);
-  const result = `${r.email} | ${r.activationUncertain ? 'CHƯA XÁC NHẬN' : 'FAIL'}: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
+  const statusTag = r.activationUncertain ? (isEn ? 'UNCONFIRMED' : 'CHƯA XÁC NHẬN') : 'FAIL';
+  const result = `${r.email} | ${statusTag}: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
+  const backupTag = isEn ? 'backup_combo' : 'combo_du_phong';
   return r.recoveryTotp
-    ? `${result} | combo_du_phong: ${line([r.email, r.password, r.recoveryTotp])}`
+    ? `${result} | ${backupTag}: ${line([r.email, r.password, r.recoveryTotp])}`
     : result;
 }
 
@@ -360,9 +363,18 @@ function planLabel(plan) {
   return { free: 'Free', plus: 'Plus', pro: 'Pro', go: 'Go', team: 'Team', business: 'Business', enterprise: 'Enterprise', edu: 'Edu', k12: 'K12', unknown: 'Unknown' }[plan] || plan || 'Unknown';
 }
 
-function formatLogoutAll(r) {
+function formatLogoutAll(r, lang) {
+  const isEn = (lang === 'en') || (typeof currentLang !== 'undefined' && currentLang === 'en');
   const tag = r.combo || r.email;
-  if (r.ok) return `${tag} | OK: ${r.message || 'logged out all sessions'}`;
+  if (r.ok) {
+    let msg = r.message || (isEn ? 'all sessions logged out successfully' : 'Đã đăng xuất tất cả thiết bị thành công');
+    if (isEn && msg.includes('Đã đăng xuất')) {
+      msg = 'all sessions logged out successfully';
+    } else if (!isEn && msg.includes('all sessions logged out')) {
+      msg = 'Đã đăng xuất tất cả thiết bị thành công';
+    }
+    return `${tag} | OK: ${msg}`;
+  }
   return `${tag} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
 }
 
@@ -494,7 +506,7 @@ if (typeof Vue !== 'undefined') {
       hint2faTeam: 'For Team / Business / Enterprise / Edu / K12 accounts using password + TOTP. Rotation applies account-wide across all workspaces. SSO-enforced accounts not supported. If UNCONFIRMED, retain backup combo.',
       hintCheckPlan: 'Read-only. Displays active subscription across selected and organization workspaces: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Quotas and remaining days displayed when provided by API.',
       hintGetToken: 'Login and retrieve ChatGPT Access Token from chatgpt.com/api/auth/session (does not alter account credentials). Output: email|access_token.',
-      hintLogoutAll: 'Log out of all existing browser, mobile app, and API sessions across all devices for this account. Output: email|OK: ...',
+      hintLogoutAll: 'Log out of all active browser, mobile app, and API sessions across all devices for this account. Output: email|OK: all sessions logged out successfully.',
       logsHeader: 'Daily audit logs stored on server (records every OK/FAIL outcome) — download to ensure credentials are never lost',
       logsRefresh: 'Refresh',
       logsHint: 'Each run writes result lines to logs/YYYY-MM-DD.txt before displaying on the UI. OK results for Change 2FA contain email|pass|new_2fa.',
@@ -750,10 +762,10 @@ if (typeof Vue !== 'undefined') {
           }
           await readResults(res.body, (r) => {
             if (tab.isOk(r)) {
-              tab.okOutput += (tab.okOutput ? '\n' : '') + tab.formatOne(r);
+              tab.okOutput += (tab.okOutput ? '\n' : '') + tab.formatOne(r, currentLangRef.value);
               tab.okCount++;
             } else {
-              tab.failOutput += (tab.failOutput ? '\n' : '') + tab.formatOne(r);
+              tab.failOutput += (tab.failOutput ? '\n' : '') + tab.formatOne(r, currentLangRef.value);
               tab.failCount++;
             }
             tab.waitingSince = Date.now();
