@@ -360,6 +360,12 @@ function planLabel(plan) {
   return { free: 'Free', plus: 'Plus', pro: 'Pro', go: 'Go', team: 'Team', business: 'Business', enterprise: 'Enterprise', edu: 'Edu', k12: 'K12', unknown: 'Unknown' }[plan] || plan || 'Unknown';
 }
 
+function formatLogoutAll(r) {
+  const tag = r.combo || r.email;
+  if (r.ok) return `${tag} | OK: ${r.message || 'logged out all sessions'}`;
+  return `${tag} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
+}
+
 function formatToken(r) {
   if (r.ok) return line([r.email, r.accessToken]);
   return `${r.combo || r.email} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
@@ -456,6 +462,13 @@ const TABS = [
     okLabel: 'OK — ACCESS TOKEN', failLabel: 'FAIL',
     isOk: (r) => r.ok,
     formatOne: formatToken
+  },
+  {
+    key: 'logout-all', endpoint: '/api/logout-all',
+    hint: 'Log out of all existing browser, mobile app, and API sessions across all devices for this account.',
+    okLabel: 'OK — LOGOUT ALL', failLabel: 'FAIL',
+    isOk: (r) => r.ok,
+    formatOne: formatLogoutAll
   }
 ];
 
@@ -474,12 +487,14 @@ if (typeof Vue !== 'undefined') {
       tabChange2faTeam: 'Change 2FA Team / K12',
       tabCheckPlan: 'Check Plan',
       tabGetToken: 'Get Access Token',
+      tabLogoutAll: 'Logout All Sessions',
       tabLogs: 'Audit Logs',
       tabConfig: 'Settings',
       hint2fa: 'Success: email|pass|new2fa. Password unchanged. If UNCONFIRMED, retain previous credentials and backup combo to verify login.',
       hint2faTeam: 'For Team / Business / Enterprise / Edu / K12 accounts using password + TOTP. Rotation applies account-wide across all workspaces. SSO-enforced accounts not supported. If UNCONFIRMED, retain backup combo.',
       hintCheckPlan: 'Read-only. Displays active subscription across selected and organization workspaces: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Quotas and remaining days displayed when provided by API.',
       hintGetToken: 'Login and retrieve ChatGPT Access Token from chatgpt.com/api/auth/session (does not alter account credentials). Output: email|access_token.',
+      hintLogoutAll: 'Log out of all existing browser, mobile app, and API sessions across all devices for this account. Output: email|OK: ...',
       logsHeader: 'Daily audit logs stored on server (records every OK/FAIL outcome) — download to ensure credentials are never lost',
       logsRefresh: 'Refresh',
       logsHint: 'Each run writes result lines to logs/YYYY-MM-DD.txt before displaying on the UI. OK results for Change 2FA contain email|pass|new_2fa.',
@@ -532,12 +547,14 @@ if (typeof Vue !== 'undefined') {
       tabChange2faTeam: 'Change 2FA Team / K12',
       tabCheckPlan: 'Check Plan',
       tabGetToken: 'Lấy Access Token',
+      tabLogoutAll: 'Đăng xuất tất cả thiết bị',
       tabLogs: 'Nhật ký (Logs)',
       tabConfig: 'Cấu hình',
       hint2fa: 'Thành công: email|pass|new2fa. Password giữ nguyên. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong để kiểm tra đăng nhập.',
       hint2faTeam: 'Cho tài khoản Team / Business / Enterprise / Edu / K12 dùng password + TOTP. Đổi 2FA áp dụng cho tài khoản, gồm mọi workspace. Tài khoản bắt buộc SSO không hỗ trợ. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong.',
       hintCheckPlan: 'Chỉ đọc. Hiển thị gói của workspace đang chọn và các workspace khác: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Unknown khi API không xác định được gói; thời hạn và quota chỉ hiện khi API cung cấp.',
       hintGetToken: 'Chỉ đăng nhập lấy Access Token từ chatgpt.com/api/auth/session (không đổi gì trên tài khoản). Kết quả OK: email|access_token.',
+      hintLogoutAll: 'Đăng xuất khỏi tất cả các phiên đăng nhập (trình duyệt, ứng dụng di động, API) trên mọi thiết bị. Kết quả: email|OK: Đã đăng xuất tất cả thiết bị.',
       logsHeader: 'Nhật ký theo ngày (lưu trên máy chủ, mọi kết quả OK/FAIL) — tải về để khỏi mất acc',
       logsRefresh: 'Làm mới',
       logsHint: 'Mỗi lần Run, từng dòng kết quả được ghi ngay vào file logs/YYYY-MM-DD.txt trước khi hiện lên UI. Dòng OK của Change 2FA chứa email|pass|2fa_mới.',
@@ -596,6 +613,7 @@ if (typeof Vue !== 'undefined') {
         { key: 'change-2fa-team', label: t.value.tabChange2faTeam },
         { key: 'check-plan', label: t.value.tabCheckPlan },
         { key: 'get-token', label: t.value.tabGetToken },
+        { key: 'logout-all', label: t.value.tabLogoutAll },
         { key: 'logs', label: t.value.tabLogs },
         { key: 'config', label: t.value.tabConfig }
       ]);
@@ -623,6 +641,7 @@ if (typeof Vue !== 'undefined') {
         if (key === 'change-2fa-team') return t.value.hint2faTeam;
         if (key === 'check-plan') return t.value.hintCheckPlan;
         if (key === 'get-token') return t.value.hintGetToken;
+        if (key === 'logout-all') return t.value.hintLogoutAll;
         return '';
       }
 

@@ -6,6 +6,7 @@ const { exec } = require('node:child_process');
 const { change2faBatch, MAX_BATCH: MAX_2FA } = require('./lib/change2fa');
 const { checkPlanBatch, MAX_BATCH: MAX_CHECK } = require('./lib/checkPlan');
 const { getTokenBatch, MAX_BATCH: MAX_TOKEN } = require('./lib/getToken');
+const { logoutAllBatch, MAX_BATCH: MAX_LOGOUT } = require('./lib/logoutAll');
 const { logResult, listLogs, logPath, setDisableLogs } = require('./lib/logger');
 const { BASE_DIR } = require('./lib/paths');
 const updater = require('./lib/updater');
@@ -62,6 +63,7 @@ app.post('/api/change-2fa-team', batchRoute(
 app.post('/api/check-plan', batchRoute(checkPlanBatch, 'check-plan'));
 app.post('/api/check-plus', batchRoute(checkPlanBatch, 'check-plan')); // compatibility
 app.post('/api/get-token', batchRoute(getTokenBatch, 'get-token'));
+app.post('/api/logout-all', batchRoute(logoutAllBatch, 'logout-all'));
 
 app.get('/api/logs', async (req, res) => {
   res.json(await listLogs());
@@ -91,7 +93,7 @@ app.post('/api/config', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, maxBatch: { twofa: MAX_2FA, check: MAX_CHECK, token: MAX_TOKEN } });
+  res.json({ ok: true, maxBatch: { twofa: MAX_2FA, check: MAX_CHECK, token: MAX_TOKEN, logout: MAX_LOGOUT } });
 });
 
 // Auto-update endpoints
