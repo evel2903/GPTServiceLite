@@ -99,6 +99,9 @@ _KEYWORDS_ACCOUNT_DEACTIVATED: Final[tuple[str, ...]] = (
     "deleted or deactivated",
     "has been deactivated",
     "does not have an account",
+    "you do not have an account",
+    "account_deactivated",
+    "deactivated",
 )
 _LOGIN_ERROR_MFA_REQUIRED: Final[str] = "mfa_required"
 _LOGIN_ERROR_ACCOUNT_LOCKED: Final[str] = "account_locked"
@@ -535,15 +538,9 @@ async def _password_verify(
     except (Exception, Exception, Exception) as exc:
         raise LoginError(reason=_LOGIN_ERROR_NETWORK) from exc
 
-    if response.status_code == 401 or response.status_code == 403:
+    if response.status_code in (400, 401, 403):
         body_lower = response.text.lower()
-        # Priority: MFA required trước credential fail (MFA có thể trả 401).
-        if any(k in body_lower for k in ("mfa_required", "totp_required", "mfa")):
-            raise LoginError(reason=_LOGIN_ERROR_MFA_REQUIRED)
-        # Account deactivated/deleted vĩnh viễn — kiểm TRƯỚC `account_locked`
-        # vì `deactivated` là terminal (không phục hồi được), cần blocklist
-        # để tránh burn thêm proxy/PoW quota cho batch sau. `account_locked`
-        # là tạm thời (rate limit/suspicious activity), user có thể retry.
+        # Account deactivated/deleted vĩnh viễn — kiểm tra đầu tiên
         if any(k in body_lower for k in _KEYWORDS_ACCOUNT_DEACTIVATED):
             logger.warning(
                 "[login] password/verify %s (deactivated): %s",
@@ -551,6 +548,14 @@ async def _password_verify(
                 _short(response.text, 200),
             )
             raise LoginError(reason=_LOGIN_ERROR_ACCOUNT_DEACTIVATED)
+        if any(
+            k in body_lower
+            for k in ("account_locked", "account_disabled", "banned", "suspended")
+        ):
+            raise LoginError(reason=_LOGIN_ERROR_ACCOUNT_LOCKED)
+        # Priority: MFA required trước credential fail (MFA có thể trả 401).
+        if any(k in body_lower for k in ("mfa_required", "totp_required")):
+            raise LoginError(reason=_LOGIN_ERROR_MFA_REQUIRED)
         if any(
             k in body_lower
             for k in ("account_locked", "account_disabled", "banned", "suspended")
@@ -636,7 +641,22 @@ async def _mfa_verify(
             response.status_code,
             _short(response.text, 200),
         )
-        # 400/401 khi TOTP code sai → coi là MFA required (secret sai / clock skew).
+        body_lower = response.text.lower()
+        if any(k in body_lower for k in _KEYWORDS_ACCOUNT_DEACTIVATED):
+            logger.warning(
+                "[login] MFA verify %s (deactivated): %s",
+                response.status_code,
+                _short(response.text, 200),
+            )
+            raise LoginError(reason=_LOGIN_ERROR_ACCOUNT_DEACTIVATED)
+        if any(
+            k in body_lower
+            for k in ("account_locked", "account_disabled", "banned", "suspended")
+        ):
+            raise LoginError(reason=_LOGIN_ERROR_ACCOUNT_LOCKED)
+        if any(k in body_lower for k in ("invalid_credentials", "invalid_password", "wrong_password")):
+            raise LoginError(reason=_LOGIN_ERROR_INVALID_CREDENTIAL)
+        # 400/401/403 khi TOTP code sai → coi là MFA required (secret sai / clock skew).
         if response.status_code in (400, 401, 403):
             raise LoginError(reason=_LOGIN_ERROR_MFA_REQUIRED)
         raise LoginError(reason=_LOGIN_ERROR_NETWORK)

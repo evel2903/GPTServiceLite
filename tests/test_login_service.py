@@ -269,6 +269,20 @@ class CompleteLoginCallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(csrf.await_count, 1)
         self.assertEqual(authorize.await_count, 1)
 
+    async def test_mfa_verify_detects_deactivated_account_403(self):
+        deactivated_json = '{"error": {"message": "You do not have an account because it has been deleted or deactivated."}}'
+        client = SimpleNamespace(post=AsyncMock(return_value=Response(403, text=deactivated_json)))
+        with self.assertRaises(login.LoginError) as ctx:
+            await login._mfa_verify(client, "challenge123", "123456", "device123", LOGGER)
+        self.assertEqual(ctx.exception.reason, "account_deactivated")
+
+    async def test_password_verify_detects_deactivated_account_400_or_403(self):
+        deactivated_json = '{"error": {"message": "Your account has been deactivated."}}'
+        client = SimpleNamespace(post=AsyncMock(return_value=Response(403, text=deactivated_json)))
+        with self.assertRaises(login.LoginError) as ctx:
+            await login._password_verify(client, "password123", "sentinel123", "device123", LOGGER)
+        self.assertEqual(ctx.exception.reason, "account_deactivated")
+
     async def test_structured_required_step_errors_are_not_hidden_by_fallback(self):
         for reason in (
             "workspace_selection_required", "sso_required",
