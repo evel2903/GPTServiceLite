@@ -1,22 +1,25 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Evel GPT Service Lite</title>
+<script src="vendor/vue.global.prod.js"></script>
 <style>
   :root {
-    color-scheme: light;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card: #ffffff;
     --primary: #0284c7;
     --primary-hover: #0369a1;
-    --primary-light: #e0f2fe;
-    --primary-border: #bae6fd;
-    --bg-page: #f4f8fb;
-    --bg-card: #ffffff;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border-color: #cbd5e1;
-    --border-light: #e2e8f0;
+    --secondary: #f1f5f9;
+    --secondary-hover: #e2e8f0;
+    --muted-foreground: #64748b;
+    --border: #e2e8f0;
+    --input: #cbd5e1;
+    --radius: 8px;
     --ok-green: #15803d;
     --ok-bg: #f0fdf4;
     --ok-border: #bbf7d0;
@@ -25,285 +28,312 @@
     --fail-border: #fecaca;
   }
   * { box-sizing: border-box; }
+  [v-cloak] { display: none !important; }
   body {
-    margin: 0; padding: 24px 32px; background: var(--bg-page); color: var(--text-main);
-    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0; padding: 24px 32px; background: var(--background); color: var(--foreground);
+    font: 14px/1.5 var(--font-sans); -webkit-font-smoothing: antialiased;
   }
-  h1 { font-size: 20px; font-weight: 700; color: #0369a1; margin: 0; display: flex; align-items: center; gap: 8px; }
-  h1 a { color: #0284c7; text-decoration: none; font-weight: 600; }
-  h1 a:hover { text-decoration: underline; color: #0369a1; }
-
-
-  .header-controls { display: flex; align-items: center; gap: 12px; }
-  .lang-switch {
-    display: inline-flex; background: #e2e8f0; border-radius: 20px; padding: 2px;
-    border: 1px solid #cbd5e1;
+  .shadcn-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
   }
-  .lang-btn {
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand-title { margin: 0; font-size: 20px; font-weight: 700; color: #0369a1; letter-spacing: -0.02em; }
+  .brand-sub { font-size: 12px; color: var(--muted-foreground); font-weight: 400; }
+  .brand-sub a { color: var(--primary); text-decoration: none; font-weight: 600; }
+  .brand-sub a:hover { text-decoration: underline; color: var(--primary-hover); }
+  .header-actions { display: flex; align-items: center; gap: 12px; }
+  .lang-switcher {
+    display: inline-flex; background: #e2e8f0; border-radius: 20px; padding: 2px; border: 1px solid #cbd5e1;
+  }
+  .lang-pill {
     background: transparent; color: #475569; border: none; border-radius: 16px;
-    padding: 4px 12px; font-size: 11px; font-weight: 700; cursor: pointer;
-    box-shadow: none; transition: all 0.2s ease;
+    padding: 4px 12px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;
   }
-  .lang-btn:hover:not(.active) { color: #0284c7; background: rgba(255,255,255,0.5); }
-  .lang-btn.active {
-    background: #ffffff; color: #0284c7; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-  .header-row {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
-    padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;
-  }
-
-  .update-badge {
+  .lang-pill:hover:not(.active) { color: var(--primary); background: rgba(255,255,255,0.6); }
+  .lang-pill.active { background: #ffffff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .update-badge-btn {
     background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 20px; padding: 6px 16px;
     color: #0369a1; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex;
     align-items: center; gap: 6px; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.08);
   }
-  .update-badge:hover { background: #bae6fd; border-color: #7dd3fc; color: #0284c7; }
-  .update-badge.has-update {
+  .update-badge-btn:hover { background: #bae6fd; border-color: #7dd3fc; color: #0284c7; }
+  .update-badge-btn.has-update {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-    border-color: #0284c7; color: #ffffff; font-weight: 700;
-    animation: pulse-ocean 2s infinite;
+    border-color: #0284c7; color: #ffffff; font-weight: 700; animation: pulse-ocean 2s infinite;
   }
+  .badge-dot { width: 6px; height: 6px; background: #ffffff; border-radius: 50%; display: inline-block; }
   @keyframes pulse-ocean {
     0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.5); }
     70% { box-shadow: 0 0 0 8px rgba(14, 165, 233, 0); }
     100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
   }
-
-  .tabs {
-    display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 2px solid #e2e8f0;
-    margin-bottom: 20px;
+  .shadcn-tablist {
+    display: inline-flex; background: #e2e8f0; border-radius: var(--radius); padding: 4px;
+    gap: 4px; margin-bottom: 20px; border: 1px solid #cbd5e1;
   }
-  .tab {
-    padding: 10px 18px; cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0;
-    border-bottom: none; border-radius: 8px 8px 0 0; color: #475569; font-weight: 500;
-    transition: all 0.15s ease;
+  .shadcn-tab-trigger {
+    padding: 8px 16px; border: none; border-radius: 6px; background: transparent;
+    color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease; font-family: var(--font-sans);
   }
-  .tab:hover { background: #f0f9ff; color: #0284c7; border-color: #bae6fd; }
-  .tab.active {
+  .shadcn-tab-trigger:hover:not(.active) { color: #0f172a; background: rgba(255,255,255,0.4); }
+  .shadcn-tab-trigger.active { background: #ffffff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .panel-grid { display: flex; gap: 20px; }
+  .shadcn-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0;
+  }
+  .single-card { max-width: 680px; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; }
+  .field-label { font-size: 12px; font-weight: 600; color: #475569; }
+  .ok-label { color: var(--ok-green); }
+  .fail-label { color: var(--fail-red); }
+  .badge-count { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; }
+  .ok-count { background: var(--ok-bg); color: var(--ok-green); border: 1px solid var(--ok-border); }
+  .fail-count { background: var(--fail-bg); color: var(--fail-red); border: 1px solid var(--fail-border); }
+  .shadcn-textarea {
+    width: 100%; height: 380px; background: #ffffff; color: #0f172a; border: 1px solid var(--input);
+    border-radius: var(--radius); padding: 10px 12px; font: 12px/1.45 var(--font-mono); resize: vertical;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .shadcn-textarea:focus, .shadcn-input:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  }
+  .proxy-area { height: 90px; }
+  .config-area { height: 110px; }
+  .ok-area { background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-green); }
+  .fail-area { background: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-red); }
+  .shadcn-input {
+    width: 100%; background: #ffffff; color: #0f172a; border: 1px solid var(--input);
+    border-radius: 6px; padding: 8px 12px; font: 12px/1.4 var(--font-mono);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .checkbox-label {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: #334155;
+  }
+  .shadcn-checkbox { width: 16px; height: 16px; border-radius: 4px; accent-color: var(--primary); cursor: pointer; }
+  .action-bar { display: flex; gap: 10px; align-items: center; }
+  .shadcn-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s ease; border: 1px solid transparent; font-family: var(--font-sans);
+  }
+  .btn-primary {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-    border-color: #0284c7; color: #ffffff; font-weight: 600;
-    box-shadow: 0 -2px 6px rgba(2, 132, 199, 0.15);
+    color: #ffffff; box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25);
   }
-
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  .row { display: flex; gap: 20px; }
-  .col {
-    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
-    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;
-    padding: 18px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  }
-
-  label { font-size: 12px; font-weight: 600; color: #475569; }
-  label.ok-label { color: var(--ok-green); }
-  label.fail-label { color: var(--fail-red); }
-
-  textarea {
-    width: 100%; height: 380px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
-    border-radius: 8px; padding: 10px; font: 12px/1.45 Consolas, Monaco, monospace; resize: vertical;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.15s, box-shadow 0.15s;
-  }
-  textarea:focus, input[type="text"]:focus {
-    outline: none; border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
-  }
-  textarea.proxy-box { height: 90px; }
-  textarea.output-ok {
-    background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-green);
-  }
-  textarea.output-fail {
-    background: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-red);
-  }
-
-  input[type="text"] {
-    width: 100%; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
-    border-radius: 6px; padding: 9px 12px; font: 12px/1.4 Consolas, monospace;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.15s;
-  }
-
-  .actions { display: flex; gap: 10px; align-items: center; }
-  button {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-    color: #ffffff; border: none; border-radius: 6px; padding: 9px 18px;
-    cursor: pointer; font-size: 13px; font-weight: 600;
-    box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25); transition: all 0.15s ease;
-  }
-  button:hover:not(:disabled) {
+  .btn-primary:hover:not(:disabled) {
     background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
     box-shadow: 0 4px 8px rgba(2, 132, 199, 0.35); transform: translateY(-1px);
   }
-  button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2); }
-  button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; box-shadow: none !important; cursor: not-allowed; }
-  button.secondary {
-    background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-primary:disabled {
+    background: #e2e8f0 !important; color: #94a3b8 !important; box-shadow: none !important; cursor: not-allowed;
   }
-  button.secondary:hover:not(:disabled) {
-    background: #f1f5f9; color: #0f172a; border-color: #94a3b8; transform: none;
+  .btn-secondary { background: var(--secondary); color: var(--foreground); border-color: var(--border); }
+  .btn-secondary:hover:not(:disabled) { background: var(--secondary-hover); border-color: #cbd5e1; }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .status-msg { font-size: 12px; color: var(--primary); font-weight: 600; }
+  .field-hint { font-size: 12px; color: var(--muted-foreground); margin: 0; line-height: 1.45; }
+  .logs-list { list-style: none; padding: 0; margin: 0; }
+  .log-item {
+    padding: 10px 14px; border-bottom: 1px solid #f1f5f9; display: flex;
+    justify-content: space-between; align-items: center;
   }
-
-  .status { font-size: 12px; color: #0284c7; font-weight: 600; }
-  .hint { font-size: 12px; color: #64748b; margin: 0; line-height: 1.45; }
-
-  /* Modal Update */
-  .update-modal-overlay {
-    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: none;
-    align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
+  .log-item:hover { background: #f0f9ff; border-radius: 6px; }
+  .log-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+  .log-link:hover { text-decoration: underline; color: var(--primary-hover); }
+  .log-size { font-size: 11px; color: var(--muted-foreground); }
+  .log-hint { padding: 10px 0; color: var(--muted-foreground); font-size: 12px; }
+  .shadcn-dialog-overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+    display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
   }
-  .update-modal-overlay.active { display: flex; }
-  .update-modal {
-    background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; width: 520px;
-    max-width: 90vw; padding: 24px; box-shadow: 0 20px 35px rgba(15, 23, 42, 0.15);
+  .shadcn-dialog {
+    background: #ffffff; border: 1px solid var(--border); border-radius: 12px;
+    width: 520px; max-width: 90vw; padding: 24px; box-shadow: 0 20px 35px rgba(15, 23, 42, 0.15);
   }
-  .update-modal h2 {
-    margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #0f172a;
-    display: flex; justify-content: space-between; align-items: center;
+  .dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .dialog-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--foreground); }
+  .dialog-close { background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; line-height: 1; padding: 0; }
+  .dialog-close:hover { color: var(--foreground); }
+  .ver-compare { display: flex; justify-content: space-between; font-size: 13px; color: #334155; margin-bottom: 12px; }
+  .ver-curr { font-weight: 700; }
+  .ver-new { font-weight: 700; color: var(--primary); }
+  .changelog-box {
+    background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; max-height: 180px; overflow-y: auto; margin: 8px 0 14px;
+    font-size: 13px; color: #334155;
   }
-  .update-modal .close-btn {
-    background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; box-shadow: none;
-  }
-  .update-modal .close-btn:hover { color: #0f172a; background: none; transform: none; box-shadow: none; }
-  .update-modal .changelog-box {
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;
-    max-height: 180px; overflow-y: auto; margin: 12px 0; font-size: 13px; color: #334155;
-  }
-  .update-modal .changelog-box ul { margin: 0; padding-left: 20px; }
-  .update-modal .changelog-box li { margin-bottom: 5px; }
-
-  .progress-container { margin: 14px 0; display: none; }
+  .changelog-box ul { margin: 0; padding-left: 20px; }
+  .changelog-box li { margin-bottom: 5px; }
+  .progress-wrap { margin: 14px 0; }
   .progress-bar-bg { background: #e2e8f0; border-radius: 999px; height: 8px; overflow: hidden; width: 100%; }
   .progress-bar-fill {
-    background: linear-gradient(90deg, #0ea5e9, #0284c7); height: 100%; width: 0%;
-    border-radius: 999px; transition: width 0.2s ease;
+    background: linear-gradient(90deg, #0ea5e9, #0284c7); height: 100%; border-radius: 999px; transition: width 0.2s ease;
   }
-  .progress-text { font-size: 11px; color: #64748b; font-weight: 500; display: flex; justify-content: space-between; margin-top: 6px; }
-
-  #logs-list li {
-    padding: 10px 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;
-  }
-  #logs-list li:hover { background: #f0f9ff; border-radius: 6px; }
-  #logs-list a { color: #0284c7; text-decoration: none; font-weight: 600; }
-  #logs-list a:hover { text-decoration: underline; color: #0369a1; }
+  .progress-meta { font-size: 11px; color: var(--muted-foreground); font-weight: 500; display: flex; justify-content: space-between; margin-top: 6px; }
+  .update-msg { font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 14px; }
+  .dialog-footer { display: flex; justify-content: flex-end; gap: 10px; }
 </style>
 </head>
 <body>
-<div class="header-row">
-  <h1>Evel GPT Service Lite <span style="font-size:12px;color:#64748b;font-weight:400;">— tác giả: <a href="https://t.me/sanlee035" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600;">@sanlee035</a></span></h1>
-    <div class="header-controls">
-    <div class="lang-switch">
-      <button id="lang-btn-en" class="lang-btn active">EN</button>
-      <button id="lang-btn-vi" class="lang-btn">VI</button>
+<div id="app" v-cloak>
+  <header class="shadcn-header">
+    <div class="brand">
+      <h1 class="brand-title">Evel GPT Service Lite</h1>
+      <span class="brand-sub">— {{ t.author }} <a href="https://t.me/sanlee035" target="_blank" rel="noopener">@sanlee035</a></span>
     </div>
-    <button id="update-badge" class="update-badge" title="Check for updates">v1.1.1</button>
-  </div>
-</div>
-<div class="tabs">
-  <div class="tab active" data-tab="change-2fa" id="tab-btn-change-2fa">Change 2FA</div>
-  <div class="tab" data-tab="change-2fa-team" id="tab-btn-change-2fa-team">Change 2FA Team / K12</div>
-  <div class="tab" data-tab="check-plan" id="tab-btn-check-plan">Check Plan</div>
-  <div class="tab" data-tab="get-token" id="tab-btn-get-token">Get Access Token</div>
-  <div class="tab" data-tab="logs" id="tab-btn-logs">Audit Logs</div>
-  <div class="tab" data-tab="config" id="tab-btn-config">Settings</div>
-</div>
-
-<div class="panel" data-panel="logs">
-  <div class="col" style="max-width: 680px;">
-    <div class="actions">
-      <label id="logs-header-label" style="flex:1">Daily audit logs stored on server (records every OK/FAIL outcome) — download to ensure credentials are never lost</label>
-      <button id="logs-refresh" class="secondary">Refresh</button>
-    </div>
-    <ul id="logs-list" style="list-style:none; padding:0; margin:0;"></ul>
-    <p id="logs-hint" class="hint">Each run writes result lines to logs/YYYY-MM-DD.txt before displaying on the UI. OK results for Change 2FA contain email|pass|new_2fa.</p>
-  </div>
-</div>
-
-<div class="panel" data-panel="config">
-  <div class="col" style="max-width: 680px;">
-    <label id="config-proxies-label">Default Proxies (one per line) — saved locally, auto-populated into tabs on startup</label>
-    <textarea id="config-proxies" placeholder="host:port or user:pass@host:port or http://..."></textarea>
-    
-    <label id="config-update-url-label" style="margin-top:10px;">Update Manifest URL (optional — leave empty for default GitHub Releases)</label>
-    <input id="config-update-url" type="text" placeholder="https://github.com/evel2903/GPTServiceLite/releases/latest/download/portable-update-windows.json" style="margin-bottom:12px;">
-
-    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:14px; font-weight:500;">
-      <input type="checkbox" id="config-disable-logs" style="width:auto; cursor:pointer;">
-      <span id="config-disable-logs-label">Disable writing audit logs to disk (recommended for production/privacy)</span>
-    </label>
-
-    <div class="actions">
-      <button id="config-save">Save</button>
-      <span id="config-status" class="status"></span>
-    </div>
-    <p id="config-hint" class="hint">Saved to config.json next to the executable. Modifying proxies within individual tabs applies only to that batch.</p>
-  </div>
-</div>
-
-<template id="panel-template">
-  <div class="row">
-    <div class="col">
-      <label class="input-label">Input (one per line: email|pass|2fa)</label>
-      <textarea class="input" placeholder="email|password|2fa_secret"></textarea>
-      <label class="proxy-label">Proxy (one per line, round-robin per account — empty = direct connection)</label>
-      <textarea class="proxy proxy-box" placeholder="host:port or user:pass@host:port or http://..."></textarea>
-      <div class="actions">
-        <button class="run">Run</button>
-        <span class="status"></span>
+    <div class="header-actions">
+      <div class="lang-switcher">
+        <button class="lang-pill" :class="{ active: currentLang === 'en' }" @click="setLanguage('en')">EN</button>
+        <button class="lang-pill" :class="{ active: currentLang === 'vi' }" @click="setLanguage('vi')">VI</button>
       </div>
-      <p class="hint"></p>
+      <button class="update-badge-btn" :class="{ 'has-update': updateInfo.updateAvailable }" @click="openUpdateModal">
+        <span class="badge-dot" v-if="updateInfo.updateAvailable"></span>
+        {{ badgeText }}
+      </button>
     </div>
-    <div class="col">
-      <label class="ok-label">OK</label>
-      <textarea class="output-ok" readonly></textarea>
-      <div class="actions">
-        <button class="copy-ok secondary">Copy</button>
-        <button class="download-ok secondary">Download .txt</button>
-      </div>
-    </div>
-    <div class="col">
-      <label class="fail-label">FAIL</label>
-      <textarea class="output-fail" readonly></textarea>
-      <div class="actions">
-        <button class="copy-fail secondary">Copy</button>
-        <button class="download-fail secondary">Download .txt</button>
-      </div>
-    </div>
-  </div>
-</template>
+  </header>
 
-<div id="panels"></div>
+  <nav class="shadcn-tablist">
+    <button v-for="tab in tabList" :key="tab.key" class="shadcn-tab-trigger" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
+      {{ tab.label }}
+    </button>
+  </nav>
 
+  <main class="panels-container">
+    <div v-for="tab in batchTabs" :key="tab.key" v-show="activeTab === tab.key" class="batch-panel">
+      <div class="panel-grid">
+        <div class="shadcn-card col-input">
+          <div class="card-header">
+            <label class="field-label">{{ t.inputLabel }}</label>
+            <span class="badge-count" v-if="tabCombosCount(tab) > 0">{{ tabCombosCount(tab) }}</span>
+          </div>
+          <textarea class="shadcn-textarea input-area" v-model="tab.combos" :placeholder="t.inputPlaceholder"></textarea>
+          <div class="card-header" style="margin-top: 6px;">
+            <label class="field-label">{{ t.proxyLabel }}</label>
+          </div>
+          <textarea class="shadcn-textarea proxy-area" v-model="tab.proxies" :placeholder="t.proxyPlaceholder"></textarea>
+          <div class="action-bar">
+            <button class="shadcn-btn btn-primary" :disabled="tab.running || !tab.combos.trim()" @click="runBatch(tab)">
+              <span>{{ t.runBtn }}</span>
+            </button>
+            <span class="status-msg" v-if="tab.statusText">{{ tab.statusText }}</span>
+          </div>
+          <p class="field-hint">{{ tabHint(tab.key) }}</p>
+        </div>
 
-<div id="update-modal" class="update-modal-overlay">
-  <div class="update-modal">
-    <h2>
-      <span id="modal-title">Evel GPT Service Lite Update</span>
-      <button class="close-btn" id="update-modal-close">&times;</button>
-    </h2>
-    <div id="update-modal-body">
-      <div style="font-size:13px; color:#334155; display:flex; justify-content:space-between; margin-bottom:8px;">
-        <span><span id="label-curr-ver">Current version:</span> <strong id="modal-current-ver">v1.0.0</strong></span>
-        <span><span id="label-new-ver">New version:</span> <strong id="modal-latest-ver" style="color:#0284c7;">--</strong></span>
-      </div>
-      <div id="modal-changelog-wrap">
-        <label id="label-changelog">What's New:</label>
-        <div class="changelog-box">
-          <ul id="modal-changelog-list"></ul>
+        <div class="shadcn-card col-output col-ok">
+          <div class="card-header">
+            <label class="field-label ok-label">{{ tab.okLabel }}</label>
+            <span class="badge-count ok-count" v-if="tab.okCount > 0">{{ tab.okCount }}</span>
+          </div>
+          <textarea class="shadcn-textarea output-area ok-area" v-model="tab.okOutput" readonly></textarea>
+          <div class="action-bar">
+            <button class="shadcn-btn btn-secondary" :disabled="!tab.okOutput" @click="copyText(tab.okOutput)">{{ t.copyBtn }}</button>
+            <button class="shadcn-btn btn-secondary" :disabled="!tab.okOutput" @click="downloadText(tab.okOutput, tab.key + '-ok.txt')">{{ t.downloadBtn }}</button>
+          </div>
+        </div>
+
+        <div class="shadcn-card col-output col-fail">
+          <div class="card-header">
+            <label class="field-label fail-label">FAIL</label>
+            <span class="badge-count fail-count" v-if="tab.failCount > 0">{{ tab.failCount }}</span>
+          </div>
+          <textarea class="shadcn-textarea output-area fail-area" v-model="tab.failOutput" readonly></textarea>
+          <div class="action-bar">
+            <button class="shadcn-btn btn-secondary" :disabled="!tab.failOutput" @click="copyText(tab.failOutput)">{{ t.copyBtn }}</button>
+            <button class="shadcn-btn btn-secondary" :disabled="!tab.failOutput" @click="downloadText(tab.failOutput, tab.key + '-fail.txt')">{{ t.downloadBtn }}</button>
+          </div>
         </div>
       </div>
-      <div id="update-progress-wrap" class="progress-container">
-        <div class="progress-bar-bg">
-          <div id="update-progress-fill" class="progress-bar-fill"></div>
+    </div>
+
+    <div v-show="activeTab === 'logs'" class="logs-panel">
+      <div class="shadcn-card single-card">
+        <div class="card-header">
+          <label class="field-label">{{ t.logsHeader }}</label>
+          <button class="shadcn-btn btn-secondary btn-sm" @click="loadLogs" :disabled="logsLoading">{{ t.logsRefresh }}</button>
         </div>
-        <div class="progress-text">
-          <span id="update-progress-msg">Đang tải...</span>
-          <span id="update-progress-percent">0%</span>
-        </div>
+        <ul class="logs-list">
+          <li v-if="logsLoading" class="log-hint">{{ t.logsLoading }}</li>
+          <li v-else-if="!logFiles.length" class="log-hint">{{ t.logsEmpty }}</li>
+          <li v-for="file in logFiles" :key="file.name" class="log-item">
+            <a :href="'/api/logs/' + file.name" download class="log-link">{{ file.name }}</a>
+            <span class="log-size">{{ (file.size / 1024).toFixed(1) }} KB</span>
+          </li>
+        </ul>
+        <p class="field-hint" style="margin-top: 12px;">{{ t.logsHint }}</p>
       </div>
-      <div id="update-modal-status" class="status" style="margin-bottom:12px;"></div>
-      <div class="actions" style="justify-content:flex-end;">
-        <button id="btn-update-cancel" class="secondary" style="display:none;">Hủy tải</button>
-        <button id="btn-update-dismiss" class="secondary">Later</button>
-        <button id="btn-update-action">Update Now</button>
+    </div>
+
+    <div v-show="activeTab === 'config'" class="config-panel">
+      <div class="shadcn-card single-card">
+        <div class="form-group">
+          <label class="field-label">{{ t.configProxies }}</label>
+          <textarea class="shadcn-textarea config-area" v-model="config.proxies" :placeholder="t.configProxiesPlaceholder"></textarea>
+        </div>
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="field-label">{{ t.configUpdateUrl }}</label>
+          <input type="text" class="shadcn-input" v-model="config.updateUrl" placeholder="https://github.com/evel2903/GPTServiceLite/releases/latest/download/portable-update-windows.json">
+        </div>
+        <div class="form-group" style="margin-top: 14px;">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="config.disableLogs" class="shadcn-checkbox">
+            <span>{{ t.configDisableLogs }}</span>
+          </label>
+        </div>
+        <div class="action-bar" style="margin-top: 16px;">
+          <button class="shadcn-btn btn-primary" @click="saveConfig" :disabled="configSaving">
+            {{ configSaving ? t.configSaving : t.configSave }}
+          </button>
+          <span class="status-msg" v-if="configStatus">{{ configStatus }}</span>
+        </div>
+        <p class="field-hint" style="margin-top: 12px;">{{ t.configHint }}</p>
+      </div>
+    </div>
+  </main>
+
+  <div class="shadcn-dialog-overlay" v-if="updateModalVisible" @click.self="updateModalVisible = false">
+    <div class="shadcn-dialog">
+      <div class="dialog-header">
+        <h3 class="dialog-title">{{ t.modalTitle }}</h3>
+        <button class="dialog-close" @click="updateModalVisible = false">&times;</button>
+      </div>
+      <div class="dialog-body">
+        <div class="ver-compare">
+          <div>{{ t.currVer }} <strong class="ver-curr">v{{ updateInfo.currentVersion }}</strong></div>
+          <div>{{ t.newVer }} <strong class="ver-new">v{{ updateInfo.latestVersion || '--' }}</strong></div>
+        </div>
+        <div class="changelog-container">
+          <label class="field-label">{{ t.changelog }}</label>
+          <div class="changelog-box">
+            <ul>
+              <li v-for="(item, idx) in updateChangelog" :key="idx">{{ item }}</li>
+            </ul>
+          </div>
+        </div>
+        <div class="progress-wrap" v-if="showProgress">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" :style="{ width: updateInfo.percent + '%' }"></div>
+          </div>
+          <div class="progress-meta">
+            <span>{{ progressMsg }}</span>
+            <span>{{ updateInfo.percent }}%</span>
+          </div>
+        </div>
+        <div class="update-msg" v-if="updateStatusMsg">{{ updateStatusMsg }}</div>
+      </div>
+      <div class="dialog-footer">
+        <button v-if="updateInfo.cancellable" class="shadcn-btn btn-secondary" @click="cancelUpdate">{{ t.btnCancelDownload }}</button>
+        <button class="shadcn-btn btn-secondary" @click="updateModalVisible = false">{{ t.btnLater }}</button>
+        <button class="shadcn-btn btn-primary" :disabled="updateActionDisabled" @click="handleUpdateAction">{{ updateActionBtnText }}</button>
       </div>
     </div>
   </div>
@@ -391,121 +421,6 @@ function completionStatus(okCount, failCount, total, lang) {
     : `Xong: OK ${okCount} / FAIL ${failCount}`;
 }
 
-const I18N = {
-  en: {
-    author: 'author:',
-    tabChange2fa: 'Change 2FA',
-    tabChange2faTeam: 'Change 2FA Team / K12',
-    tabCheckPlan: 'Check Plan',
-    tabGetToken: 'Get Access Token',
-    tabLogs: 'Audit Logs',
-    tabConfig: 'Settings',
-    hint2fa: 'Success: email|pass|new2fa. Password unchanged. If UNCONFIRMED, retain previous credentials and backup combo to verify login.',
-    hint2faTeam: 'For Team / Business / Enterprise / Edu / K12 accounts using password + TOTP. Rotation applies account-wide across all workspaces. SSO-enforced accounts not supported. If UNCONFIRMED, retain backup combo.',
-    hintCheckPlan: 'Read-only. Displays active subscription across selected and organization workspaces: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Quotas and remaining days displayed when provided by API.',
-    hintGetToken: 'Login and retrieve ChatGPT Access Token from chatgpt.com/api/auth/session (does not alter account credentials). Output: email|access_token.',
-    logsHeader: 'Daily audit logs stored on server (records every OK/FAIL outcome) — download to ensure credentials are never lost',
-    logsRefresh: 'Refresh',
-    logsHint: 'Each run writes result lines to logs/YYYY-MM-DD.txt before displaying on the UI. OK results for Change 2FA contain email|pass|new_2fa.',
-    logsEmpty: 'No logs found.',
-    logsLoading: 'Loading logs...',
-    configProxies: 'Default Proxies (one per line) — saved locally, auto-populated into tabs on startup',
-    configProxiesPlaceholder: 'host:port or user:pass@host:port or http://...',
-    configUpdateUrl: 'Update Manifest URL (optional — leave empty for default GitHub Releases)',
-    configDisableLogs: 'Disable saving audit logs to disk (recommended for production/privacy)',
-    configSave: 'Save',
-    configSaving: 'Saving...',
-    configSaved: 'Saved ✓',
-    configSaveError: 'Save failed',
-    configHint: 'Saved to config.json next to the executable. Modifying proxies within individual tabs applies only to that batch.',
-    inputLabel: 'Input (one per line: email|pass|2fa)',
-    inputPlaceholder: 'email|password|2fa_secret',
-    proxyLabel: 'Proxy (one per line, round-robin per account — empty = direct connection)',
-    proxyPlaceholder: 'host:port or user:pass@host:port or http://...',
-    runBtn: 'Run',
-    copyBtn: 'Copy',
-    downloadBtn: 'Download .txt',
-    runningText: (done, total, ok, fail, s) => `Running... ${done}/${total} (OK ${ok} / FAIL ${fail}) — waiting ${s}s`,
-    runningStart: (total) => `Running... 0/${total}`,
-    modalTitle: 'Evel GPT Service Lite Update',
-    currVer: 'Current version:',
-    newVer: 'New version:',
-    changelog: "What's New:",
-    btnUpdateNow: 'Update Now',
-    btnRestartInstall: 'Restart & Install',
-    btnLater: 'Later',
-    btnCancelDownload: 'Cancel Download',
-    btnCheckAgain: 'Check Again',
-    readyMsg: 'Update ready to install!',
-    downloadingMsg: (dl, total) => `Downloading: ${dl} / ${total}`,
-    verifyingMsg: 'Verifying SHA-256 integrity...',
-    stagingMsg: 'Extracting update package...',
-    restartingMsg: 'Applying update and restarting server...',
-    waitingRestart: (s) => `Waiting for server to restart... (${s}s)`,
-    restartSuccess: 'Restart successful! Reloading page...',
-    downloadCancelled: 'Download cancelled.',
-    badgeNew: (v) => `🔔 New v${v}!`,
-    badgeLatest: (v) => `v${v} (Latest)`,
-    badgeNormal: (v) => `v${v}`
-  },
-  vi: {
-    author: 'tác giả:',
-    tabChange2fa: 'Change 2FA',
-    tabChange2faTeam: 'Change 2FA Team / K12',
-    tabCheckPlan: 'Check Plan',
-    tabGetToken: 'Lấy Access Token',
-    tabLogs: 'Nhật ký (Logs)',
-    tabConfig: 'Cấu hình',
-    hint2fa: 'Thành công: email|pass|new2fa. Password giữ nguyên. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong để kiểm tra đăng nhập.',
-    hint2faTeam: 'Cho tài khoản Team / Business / Enterprise / Edu / K12 dùng password + TOTP. Đổi 2FA áp dụng cho tài khoản, gồm mọi workspace. Tài khoản bắt buộc SSO không hỗ trợ. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong.',
-    hintCheckPlan: 'Chỉ đọc. Hiển thị gói của workspace đang chọn và các workspace khác: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Unknown khi API không xác định được gói; thời hạn và quota chỉ hiện khi API cung cấp.',
-    hintGetToken: 'Chỉ đăng nhập lấy Access Token từ chatgpt.com/api/auth/session (không đổi gì trên tài khoản). Kết quả OK: email|access_token.',
-    logsHeader: 'Nhật ký theo ngày (lưu trên máy chủ, mọi kết quả OK/FAIL) — tải về để khỏi mất acc',
-    logsRefresh: 'Làm mới',
-    logsHint: 'Mỗi lần Run, từng dòng kết quả được ghi ngay vào file logs/YYYY-MM-DD.txt trước khi hiện lên UI. Dòng OK của Change 2FA chứa email|pass|2fa_mới.',
-    logsEmpty: 'Chưa có log nào.',
-    logsLoading: 'Đang tải...',
-    configProxies: 'Proxy mặc định (mỗi dòng 1 proxy) — lưu vào máy, tự đổ vào các tab khi mở',
-    configProxiesPlaceholder: 'host:port hoặc user:pass@host:port hoặc http://...',
-    configUpdateUrl: 'Link kiểm tra cập nhật (tùy chọn — để trống để dùng GitHub Releases mặc định)',
-    configDisableLogs: 'Tắt lưu nhật ký vào ổ đĩa (khuyên dùng khi deploy môi trường bảo mật cao)',
-    configSave: 'Lưu',
-    configSaving: 'Đang lưu...',
-    configSaved: 'Đã lưu ✓',
-    configSaveError: 'Lỗi lưu',
-    configHint: 'Lưu vào config.json cạnh app. Sửa proxy trong các tab chỉ áp dụng cho lần chạy đó; muốn nhớ lâu thì lưu ở đây.',
-    inputLabel: 'Input (mỗi dòng: email|pass|2fa)',
-    inputPlaceholder: 'email|password|2fa_secret',
-    proxyLabel: 'Proxy (mỗi dòng 1 proxy, xoay vòng theo combo — để trống = ko proxy)',
-    proxyPlaceholder: 'host:port hoặc user:pass@host:port hoặc http://...',
-    runBtn: 'Run',
-    copyBtn: 'Copy',
-    downloadBtn: 'Download .txt',
-    runningText: (done, total, ok, fail, s) => `Đang chạy... ${done}/${total} (OK ${ok} / FAIL ${fail}) — chờ kết quả ${s}s`,
-    runningStart: (total) => `Đang chạy... 0/${total}`,
-    modalTitle: 'Cập nhật Evel GPT Service Lite',
-    currVer: 'Phiên bản hiện tại:',
-    newVer: 'Phiên bản mới:',
-    changelog: 'Nội dung cập nhật:',
-    btnUpdateNow: 'Cập nhật ngay',
-    btnRestartInstall: 'Khởi động lại & Cài đặt',
-    btnLater: 'Để sau',
-    btnCancelDownload: 'Hủy tải',
-    btnCheckAgain: 'Kiểm tra lại',
-    readyMsg: 'Bản cập nhật đã sẵn sàng để cài đặt!',
-    downloadingMsg: (dl, total) => `Đang tải: ${dl} / ${total}`,
-    verifyingMsg: 'Đang xác thực SHA-256...',
-    stagingMsg: 'Đang giải nén file...',
-    restartingMsg: 'Đang áp dụng bản cập nhật và khởi động lại máy chủ...',
-    waitingRestart: (s) => `Đang đợi máy chủ khởi động lại... (${s}s)`,
-    restartSuccess: 'Khởi động thành công! Đang tải lại trang...',
-    downloadCancelled: 'Đã hủy tải.',
-    badgeNew: (v) => `🔔 Bản mới v${v}!`,
-    badgeLatest: (v) => `v${v} (Mới nhất)`,
-    badgeNormal: (v) => `v${v}`
-  }
-};
-
 const TABS = [
   {
     key: 'change-2fa', endpoint: '/api/change-2fa',
@@ -537,486 +452,495 @@ const TABS = [
   }
 ];
 
-const panelsEl = document.getElementById('panels');
-const tmpl = document.getElementById('panel-template');
+const panelsEl = null; // Split marker for unit tests
 
-for (const tab of TABS) {
-  const node = tmpl.content.cloneNode(true);
-  const panel = document.createElement('div');
-  panel.className = 'panel' + (tab.key === TABS[0].key ? ' active' : '');
-  panel.dataset.panel = tab.key;
-  panel.appendChild(node);
-  panelsEl.appendChild(panel);
+// Vue 3 Reactive Application
+if (typeof Vue !== 'undefined') {
+  const { createApp, ref, reactive, computed, onMounted } = Vue;
 
-  const input = panel.querySelector('.input');
-  const proxyInput = panel.querySelector('.proxy');
-  const okOutput = panel.querySelector('.output-ok');
-  const failOutput = panel.querySelector('.output-fail');
-  const runBtn = panel.querySelector('.run');
-  const statusEl = panel.querySelector('.status');
-  const hintEl = panel.querySelector('.hint');
-
-  hintEl.textContent = tab.hint;
-  panel.querySelector('.ok-label').textContent = tab.okLabel;
-  panel.querySelector('.fail-label').textContent = tab.failLabel;
-
-  function appendLine(el, text) {
-    el.value += (el.value ? '\n' : '') + text;
-    el.scrollTop = el.scrollHeight;
-  }
-
-  runBtn.addEventListener('click', async () => {
-    const combos = input.value;
-    if (!combos.trim()) return;
-    const total = Math.min(combos.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length, 50);
-    runBtn.disabled = true;
-    okOutput.value = '';
-    failOutput.value = '';
-    let okCount = 0, failCount = 0;
-    let waitingSince = Date.now();
-    const t = I18N[currentLang] || I18N.en;
-    function showProgress() {
-      const seconds = Math.floor((Date.now() - waitingSince) / 1000);
-      statusEl.textContent = t.runningText(okCount + failCount, total, okCount, failCount, seconds);
+  const I18N = {
+    en: {
+      author: 'author:',
+      tabChange2fa: 'Change 2FA',
+      tabChange2faTeam: 'Change 2FA Team / K12',
+      tabCheckPlan: 'Check Plan',
+      tabGetToken: 'Get Access Token',
+      tabLogs: 'Audit Logs',
+      tabConfig: 'Settings',
+      hint2fa: 'Success: email|pass|new2fa. Password unchanged. If UNCONFIRMED, retain previous credentials and backup combo to verify login.',
+      hint2faTeam: 'For Team / Business / Enterprise / Edu / K12 accounts using password + TOTP. Rotation applies account-wide across all workspaces. SSO-enforced accounts not supported. If UNCONFIRMED, retain backup combo.',
+      hintCheckPlan: 'Read-only. Displays active subscription across selected and organization workspaces: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Quotas and remaining days displayed when provided by API.',
+      hintGetToken: 'Login and retrieve ChatGPT Access Token from chatgpt.com/api/auth/session (does not alter account credentials). Output: email|access_token.',
+      logsHeader: 'Daily audit logs stored on server (records every OK/FAIL outcome) — download to ensure credentials are never lost',
+      logsRefresh: 'Refresh',
+      logsHint: 'Each run writes result lines to logs/YYYY-MM-DD.txt before displaying on the UI. OK results for Change 2FA contain email|pass|new_2fa.',
+      logsEmpty: 'No logs found.',
+      logsLoading: 'Loading logs...',
+      configProxies: 'Default Proxies (one per line) — saved locally, auto-populated into tabs on startup',
+      configProxiesPlaceholder: 'host:port or user:pass@host:port or http://...',
+      configUpdateUrl: 'Update Manifest URL (optional — leave empty for default GitHub Releases)',
+      configDisableLogs: 'Disable writing audit logs to disk (recommended for production/privacy)',
+      configSave: 'Save',
+      configSaving: 'Saving...',
+      configSaved: 'Saved ✓',
+      configSaveError: 'Save failed',
+      configHint: 'Saved to config.json next to the executable. Modifying proxies within individual tabs applies only to that batch.',
+      inputLabel: 'Input (one per line: email|pass|2fa)',
+      inputPlaceholder: 'email|password|2fa_secret',
+      proxyLabel: 'Proxy (one per line, round-robin per account — empty = direct connection)',
+      proxyPlaceholder: 'host:port or user:pass@host:port or http://...',
+      runBtn: 'Run',
+      copyBtn: 'Copy',
+      downloadBtn: 'Download .txt',
+      runningText: (done, total, ok, fail, s) => `Running... ${done}/${total} (OK ${ok} / FAIL ${fail}) — waiting ${s}s`,
+      runningStart: (total) => `Running... 0/${total}`,
+      modalTitle: 'Evel GPT Service Lite Update',
+      currVer: 'Current version:',
+      newVer: 'New version:',
+      changelog: "What's New:",
+      btnUpdateNow: 'Update Now',
+      btnRestartInstall: 'Restart & Install',
+      btnLater: 'Later',
+      btnCancelDownload: 'Cancel Download',
+      btnCheckAgain: 'Check Again',
+      readyMsg: 'Update ready to install!',
+      downloadingMsg: (dl, total) => `Downloading: ${dl} / ${total}`,
+      verifyingMsg: 'Verifying SHA-256 integrity...',
+      stagingMsg: 'Extracting update package...',
+      restartingMsg: 'Applying update and restarting server...',
+      waitingRestart: (s) => `Waiting for server to restart... (${s}s)`,
+      restartSuccess: 'Restart successful! Reloading page...',
+      downloadCancelled: 'Download cancelled.',
+      badgeNew: (v) => `🔔 New v${v}!`,
+      badgeLatest: (v) => `v${v} (Latest)`,
+      badgeNormal: (v) => `v${v}`
+    },
+    vi: {
+      author: 'tác giả:',
+      tabChange2fa: 'Change 2FA',
+      tabChange2faTeam: 'Change 2FA Team / K12',
+      tabCheckPlan: 'Check Plan',
+      tabGetToken: 'Lấy Access Token',
+      tabLogs: 'Nhật ký (Logs)',
+      tabConfig: 'Cấu hình',
+      hint2fa: 'Thành công: email|pass|new2fa. Password giữ nguyên. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong để kiểm tra đăng nhập.',
+      hint2faTeam: 'Cho tài khoản Team / Business / Enterprise / Edu / K12 dùng password + TOTP. Đổi 2FA áp dụng cho tài khoản, gồm mọi workspace. Tài khoản bắt buộc SSO không hỗ trợ. Nếu CHƯA XÁC NHẬN, giữ combo cũ và combo_du_phong.',
+      hintCheckPlan: 'Chỉ đọc. Hiển thị gói của workspace đang chọn và các workspace khác: Free / Plus / Pro / Go / Team / Business / Enterprise / Edu / K12. Unknown khi API không xác định được gói; thời hạn và quota chỉ hiện khi API cung cấp.',
+      hintGetToken: 'Chỉ đăng nhập lấy Access Token từ chatgpt.com/api/auth/session (không đổi gì trên tài khoản). Kết quả OK: email|access_token.',
+      logsHeader: 'Nhật ký theo ngày (lưu trên máy chủ, mọi kết quả OK/FAIL) — tải về để khỏi mất acc',
+      logsRefresh: 'Làm mới',
+      logsHint: 'Mỗi lần Run, từng dòng kết quả được ghi ngay vào file logs/YYYY-MM-DD.txt trước khi hiện lên UI. Dòng OK của Change 2FA chứa email|pass|2fa_mới.',
+      logsEmpty: 'Chưa có log nào.',
+      logsLoading: 'Đang tải...',
+      configProxies: 'Proxy mặc định (mỗi dòng 1 proxy) — lưu vào máy, tự đổ vào các tab khi mở',
+      configProxiesPlaceholder: 'host:port hoặc user:pass@host:port hoặc http://...',
+      configUpdateUrl: 'Link kiểm tra cập nhật (tùy chọn — để trống để dùng GitHub Releases mặc định)',
+      configDisableLogs: 'Tắt lưu nhật ký vào ổ đĩa (khuyên dùng khi deploy môi trường bảo mật cao)',
+      configSave: 'Lưu',
+      configSaving: 'Đang lưu...',
+      configSaved: 'Đã lưu ✓',
+      configSaveError: 'Lỗi lưu',
+      configHint: 'Lưu vào config.json cạnh app. Sửa proxy trong các tab chỉ áp dụng cho lần chạy đó; muốn nhớ lâu thì lưu ở đây.',
+      inputLabel: 'Input (mỗi dòng: email|pass|2fa)',
+      inputPlaceholder: 'email|password|2fa_secret',
+      proxyLabel: 'Proxy (mỗi dòng 1 proxy, xoay vòng theo combo — để trống = ko proxy)',
+      proxyPlaceholder: 'host:port hoặc user:pass@host:port hoặc http://...',
+      runBtn: 'Run',
+      copyBtn: 'Copy',
+      downloadBtn: 'Download .txt',
+      runningText: (done, total, ok, fail, s) => `Đang chạy... ${done}/${total} (OK ${ok} / FAIL ${fail}) — chờ kết quả ${s}s`,
+      runningStart: (total) => `Đang chạy... 0/${total}`,
+      modalTitle: 'Cập nhật Evel GPT Service Lite',
+      currVer: 'Phiên bản hiện tại:',
+      newVer: 'Phiên bản mới:',
+      changelog: 'Nội dung cập nhật:',
+      btnUpdateNow: 'Cập nhật ngay',
+      btnRestartInstall: 'Khởi động lại & Cài đặt',
+      btnLater: 'Để sau',
+      btnCancelDownload: 'Hủy tải',
+      btnCheckAgain: 'Kiểm tra lại',
+      readyMsg: 'Bản cập nhật đã sẵn sàng để cài đặt!',
+      downloadingMsg: (dl, total) => `Đang tải: ${dl} / ${total}`,
+      verifyingMsg: 'Đang xác thực SHA-256...',
+      stagingMsg: 'Đang giải nén file...',
+      restartingMsg: 'Đang áp dụng bản cập nhật và khởi động lại máy chủ...',
+      waitingRestart: (s) => `Đang đợi máy chủ khởi động lại... (${s}s)`,
+      restartSuccess: 'Khởi động thành công! Đang tải lại trang...',
+      downloadCancelled: 'Đã hủy tải.',
+      badgeNew: (v) => `🔔 Bản mới v${v}!`,
+      badgeLatest: (v) => `v${v} (Mới nhất)`,
+      badgeNormal: (v) => `v${v}`
     }
-    const progressTimer = setInterval(showProgress, 1000);
-    statusEl.textContent = t.runningStart(total);
-    try {
-      const res = await fetch(tab.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ combos, proxies: proxyInput.value })
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        statusEl.textContent = (t.errorStatus || 'Error: ') + (data.error || res.statusText);
-        return;
-      }
-      await readResults(res.body, (r) => {
-        if (tab.isOk(r)) { appendLine(okOutput, tab.formatOne(r)); okCount++; }
-        else { appendLine(failOutput, tab.formatOne(r)); failCount++; }
-        waitingSince = Date.now();
-        showProgress();
-      });
-      statusEl.textContent = completionStatus(okCount, failCount, total, currentLang);
-    } catch (e) {
-      statusEl.textContent = `${t.errorStatus || 'Error: '}${e.message}. ${okCount + failCount}/${total}`;
-    } finally {
-      clearInterval(progressTimer);
-      runBtn.disabled = false;
-    }
-  });
-
-  function wireColumn(copySel, downloadSel, output, name) {
-    panel.querySelector(copySel).addEventListener('click', () => navigator.clipboard.writeText(output.value));
-    panel.querySelector(downloadSel).addEventListener('click', () => {
-      const blob = new Blob([output.value], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${tab.key}-${name}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  }
-  wireColumn('.copy-ok', '.download-ok', okOutput, 'ok');
-  wireColumn('.copy-fail', '.download-fail', failOutput, 'fail');
-}
-
-// Navigation Tabs
-document.querySelectorAll('.tab').forEach((tabEl) => {
-  tabEl.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
-    tabEl.classList.add('active');
-    document.querySelector(`.panel[data-panel="${tabEl.dataset.tab}"]`).classList.add('active');
-  });
-});
-
-// Settings & Config
-const cfgProxies = document.getElementById('config-proxies');
-const cfgUpdateUrl = document.getElementById('config-update-url');
-const cfgDisableLogs = document.getElementById('config-disable-logs');
-const cfgStatus = document.getElementById('config-status');
-
-fetch('/api/config').then((r) => r.json()).then((cfg) => {
-  const proxies = cfg.proxies || '';
-  cfgProxies.value = proxies;
-  if (cfgUpdateUrl) cfgUpdateUrl.value = cfg.updateUrl || '';
-  if (cfgDisableLogs) cfgDisableLogs.checked = Boolean(cfg.disableLogs);
-  document.querySelectorAll('.proxy').forEach((el) => { if (!el.value) el.value = proxies; });
-}).catch(() => {});
-
-document.getElementById('config-save').addEventListener('click', async () => {
-  const t = I18N[currentLang] || I18N.en;
-  cfgStatus.textContent = t.configSaving;
-  try {
-    const res = await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        proxies: cfgProxies.value,
-        updateUrl: cfgUpdateUrl ? cfgUpdateUrl.value : '',
-        disableLogs: cfgDisableLogs ? cfgDisableLogs.checked : false
-      })
-    });
-    cfgStatus.textContent = res.ok ? t.configSaved : t.configSaveError;
-    if (res.ok) document.querySelectorAll('.proxy').forEach((el) => { el.value = cfgProxies.value; });
-  } catch (e) {
-    cfgStatus.textContent = (t.errorStatus || 'Error: ') + e.message;
-  }
-});
-
-// Logs List
-const logsList = document.getElementById('logs-list');
-async function loadLogs() {
-  const t = I18N[currentLang] || I18N.en;
-  logsList.innerHTML = `<li class="hint">${t.logsLoading}</li>`;
-  try {
-    const files = await fetch('/api/logs').then((r) => r.json());
-    if (!files.length) { logsList.innerHTML = `<li class="hint">${t.logsEmpty}</li>`; return; }
-    logsList.innerHTML = files.map((f) => {
-      const kb = (f.size / 1024).toFixed(1);
-      return `<li><a href="/api/logs/${f.name}" download>${f.name}</a> <span class="hint">(${kb} KB)</span></li>`;
-    }).join('');
-  } catch (e) {
-    logsList.innerHTML = `<li class="hint">${t.errorStatus || 'Error: '}${e.message}</li>`;
-  }
-}
-document.getElementById('logs-refresh').addEventListener('click', loadLogs);
-document.querySelector('.tab[data-tab="logs"]').addEventListener('click', loadLogs);
-
-// --- Language Switcher ---
-function setLanguage(lang) {
-  currentLang = lang;
-  if (typeof localStorage !== 'undefined') localStorage.setItem('evel_lang', lang);
-
-  const btnEn = document.getElementById('lang-btn-en');
-  const btnVi = document.getElementById('lang-btn-vi');
-  if (btnEn) btnEn.classList.toggle('active', lang === 'en');
-  if (btnVi) btnVi.classList.toggle('active', lang === 'vi');
-
-  const t = I18N[lang] || I18N.en;
-
-  const authLbl = document.getElementById('author-label');
-  if (authLbl) authLbl.textContent = t.author;
-
-  const tabLabels = {
-    'tab-btn-change-2fa': t.tabChange2fa,
-    'tab-btn-change-2fa-team': t.tabChange2faTeam,
-    'tab-btn-check-plan': t.tabCheckPlan,
-    'tab-btn-get-token': t.tabGetToken,
-    'tab-btn-logs': t.tabLogs,
-    'tab-btn-config': t.tabConfig
-  };
-  for (const [id, text] of Object.entries(tabLabels)) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  }
-
-  const elLogsHeader = document.getElementById('logs-header-label');
-  if (elLogsHeader) elLogsHeader.textContent = t.logsHeader;
-  const elLogsRefresh = document.getElementById('logs-refresh');
-  if (elLogsRefresh) elLogsRefresh.textContent = t.logsRefresh;
-  const elLogsHint = document.getElementById('logs-hint');
-  if (elLogsHint) elLogsHint.textContent = t.logsHint;
-
-  const elConfigProxies = document.getElementById('config-proxies-label');
-  if (elConfigProxies) elConfigProxies.textContent = t.configProxies;
-  const elConfigProxiesArea = document.getElementById('config-proxies');
-  if (elConfigProxiesArea) elConfigProxiesArea.placeholder = t.configProxiesPlaceholder;
-  const elConfigUpdate = document.getElementById('config-update-url-label');
-  if (elConfigUpdate) elConfigUpdate.textContent = t.configUpdateUrl;
-  const elConfigDisableLogs = document.getElementById('config-disable-logs-label');
-  if (elConfigDisableLogs) elConfigDisableLogs.textContent = t.configDisableLogs;
-  const elConfigSave = document.getElementById('config-save');
-  if (elConfigSave) elConfigSave.textContent = t.configSave;
-  const elConfigHint = document.getElementById('config-hint');
-  if (elConfigHint) elConfigHint.textContent = t.configHint;
-
-  const hintMap = {
-    'change-2fa': t.hint2fa,
-    'change-2fa-team': t.hint2faTeam,
-    'check-plan': t.hintCheckPlan,
-    'get-token': t.hintGetToken
   };
 
-  document.querySelectorAll('#panels .panel').forEach((panel) => {
-    const key = panel.dataset.panel;
-    if (hintMap[key]) {
-      const hint = panel.querySelector('.hint');
-      if (hint) hint.textContent = hintMap[key];
-    }
-    const inputLbl = panel.querySelector('.input-label');
-    if (inputLbl) inputLbl.textContent = t.inputLabel;
-    const input = panel.querySelector('.input');
-    if (input) input.placeholder = t.inputPlaceholder;
-    const proxyLbl = panel.querySelector('.proxy-label');
-    if (proxyLbl) proxyLbl.textContent = t.proxyLabel;
-    const proxy = panel.querySelector('.proxy');
-    if (proxy) proxy.placeholder = t.proxyPlaceholder;
-    const run = panel.querySelector('.run');
-    if (run) run.textContent = t.runBtn;
-    const copyOk = panel.querySelector('.copy-ok');
-    if (copyOk) copyOk.textContent = t.copyBtn;
-    const copyFail = panel.querySelector('.copy-fail');
-    if (copyFail) copyFail.textContent = t.copyBtn;
-    const dlOk = panel.querySelector('.download-ok');
-    if (dlOk) dlOk.textContent = t.downloadBtn;
-    const dlFail = panel.querySelector('.download-fail');
-    if (dlFail) dlFail.textContent = t.downloadBtn;
-  });
+  createApp({
+    setup() {
+      const activeTab = ref('change-2fa');
+      const currentLangRef = ref(currentLang);
 
-  const modalTitle = document.getElementById('modal-title');
-  if (modalTitle) modalTitle.textContent = t.modalTitle;
-  const lblCurrVer = document.getElementById('label-curr-ver');
-  if (lblCurrVer) lblCurrVer.textContent = t.currVer;
-  const lblNewVer = document.getElementById('label-new-ver');
-  if (lblNewVer) lblNewVer.textContent = t.newVer;
-  const lblChangelog = document.getElementById('label-changelog');
-  if (lblChangelog) lblChangelog.textContent = t.changelog;
-  const btnDismiss = document.getElementById('btn-update-dismiss');
-  if (btnDismiss) btnDismiss.textContent = t.btnLater;
-  const btnCancel = document.getElementById('btn-update-cancel');
-  if (btnCancel) btnCancel.textContent = t.btnCancelDownload;
+      const t = computed(() => I18N[currentLangRef.value] || I18N.en);
 
-  if (currentUpdateInfo) renderUpdateUI(currentUpdateInfo);
-}
+      const tabList = computed(() => [
+        { key: 'change-2fa', label: t.value.tabChange2fa },
+        { key: 'change-2fa-team', label: t.value.tabChange2faTeam },
+        { key: 'check-plan', label: t.value.tabCheckPlan },
+        { key: 'get-token', label: t.value.tabGetToken },
+        { key: 'logs', label: t.value.tabLogs },
+        { key: 'config', label: t.value.tabConfig }
+      ]);
 
-const btnLangEn = document.getElementById('lang-btn-en');
-if (btnLangEn) btnLangEn.addEventListener('click', () => setLanguage('en'));
-const btnLangVi = document.getElementById('lang-btn-vi');
-if (btnLangVi) btnLangVi.addEventListener('click', () => setLanguage('vi'));
+      const batchTabs = reactive(TABS.map((tab) => ({
+        ...tab,
+        combos: '',
+        proxies: '',
+        okOutput: '',
+        failOutput: '',
+        running: false,
+        statusText: '',
+        okCount: 0,
+        failCount: 0,
+        waitingSince: 0
+      })));
 
-// --- Auto-Update Manager ---
-const updateBadge = document.getElementById('update-badge');
-const updateModal = document.getElementById('update-modal');
-const updateModalClose = document.getElementById('update-modal-close');
-const btnUpdateDismiss = document.getElementById('btn-update-dismiss');
-const btnUpdateAction = document.getElementById('btn-update-action');
-const btnUpdateCancel = document.getElementById('btn-update-cancel');
-const modalCurrentVer = document.getElementById('modal-current-ver');
-const modalLatestVer = document.getElementById('modal-latest-ver');
-const modalChangelogList = document.getElementById('modal-changelog-list');
-const updateProgressWrap = document.getElementById('update-progress-wrap');
-const updateProgressFill = document.getElementById('update-progress-fill');
-const updateProgressMsg = document.getElementById('update-progress-msg');
-const updateProgressPercent = document.getElementById('update-progress-percent');
-const updateModalStatus = document.getElementById('update-modal-status');
-
-let updatePollTimer = null;
-let currentUpdateInfo = null;
-
-function openUpdateModal() { updateModal.classList.add('active'); }
-function closeUpdateModal() { updateModal.classList.remove('active'); }
-
-if (updateBadge) {
-  updateBadge.addEventListener('click', () => {
-    openUpdateModal();
-    checkUpdateState(true);
-  });
-}
-if (updateModalClose) updateModalClose.addEventListener('click', closeUpdateModal);
-if (btnUpdateDismiss) btnUpdateDismiss.addEventListener('click', closeUpdateModal);
-
-async function checkUpdateState(manual = false) {
-  try {
-    const res = await fetch('/api/update/check' + (manual ? '?force=true' : ''));
-    const data = await res.json();
-    currentUpdateInfo = data;
-    renderUpdateUI(data);
-  } catch (err) {
-    const t = I18N[currentLang] || I18N.en;
-    if (manual) updateModalStatus.textContent = (t.errorStatus || 'Error: ') + err.message;
-  }
-}
-
-function renderUpdateUI(info) {
-  if (!info) return;
-  const t = I18N[currentLang] || I18N.en;
-
-  if (modalCurrentVer) modalCurrentVer.textContent = 'v' + info.currentVersion;
-  if (updateBadge) updateBadge.textContent = t.badgeNormal(info.currentVersion);
-
-  if (info.updateAvailable) {
-    if (updateBadge) {
-      updateBadge.textContent = t.badgeNew(info.latestVersion);
-      updateBadge.classList.add('has-update');
-    }
-    if (modalLatestVer) modalLatestVer.textContent = 'v' + info.latestVersion;
-
-    if (modalChangelogList) {
-      modalChangelogList.innerHTML = '';
-      if (info.changelog && info.changelog.length) {
-        info.changelog.forEach((c) => {
-          const li = document.createElement('li');
-          li.textContent = c;
-          modalChangelogList.appendChild(li);
-        });
-      } else {
-        modalChangelogList.innerHTML = '<li>' + (currentLang === 'en' ? 'Performance optimizations and bug fixes.' : 'Bản cập nhật tối ưu hóa hiệu năng và sửa lỗi.') + '</li>';
+      function tabCombosCount(tab) {
+        if (!tab.combos.trim()) return 0;
+        return tab.combos.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length;
       }
-    }
 
-    if (info.phase === 'ready') {
-      btnUpdateAction.textContent = t.btnRestartInstall;
-      btnUpdateAction.disabled = false;
-      btnUpdateCancel.style.display = 'none';
-      updateProgressWrap.style.display = 'block';
-      updateProgressFill.style.width = '100%';
-      updateProgressPercent.textContent = '100%';
-      updateProgressMsg.textContent = t.readyMsg;
-    } else if (info.phase === 'downloading' || info.phase === 'verifying' || info.phase === 'staging') {
-      btnUpdateAction.disabled = true;
-      btnUpdateCancel.style.display = 'inline-block';
-      updateProgressWrap.style.display = 'block';
-      startUpdatePolling();
-    } else {
-      btnUpdateAction.textContent = t.btnUpdateNow;
-      btnUpdateAction.disabled = false;
-      btnUpdateCancel.style.display = 'none';
-      updateProgressWrap.style.display = 'none';
-    }
-  } else {
-    if (updateBadge) {
-      updateBadge.classList.remove('has-update');
-      updateBadge.textContent = t.badgeLatest(info.currentVersion);
-    }
-    if (modalLatestVer) modalLatestVer.textContent = t.badgeLatest(info.currentVersion);
-    if (modalChangelogList) {
-      modalChangelogList.innerHTML = '<li>' + (currentLang === 'en' ? 'You are using the latest version!' : 'Bạn đang dùng phiên bản mới nhất!') + '</li>';
-    }
-    btnUpdateAction.textContent = t.btnCheckAgain;
-    btnUpdateAction.disabled = false;
-    btnUpdateCancel.style.display = 'none';
-    updateProgressWrap.style.display = 'none';
-  }
-}
-
-if (btnUpdateAction) {
-  btnUpdateAction.addEventListener('click', async () => {
-    const t = I18N[currentLang] || I18N.en;
-    if (!currentUpdateInfo || !currentUpdateInfo.updateAvailable) {
-      btnUpdateAction.disabled = true;
-      updateModalStatus.textContent = t.updateBadgeChecking;
-      await checkUpdateState(true);
-      btnUpdateAction.disabled = false;
-      return;
-    }
-
-    if (currentUpdateInfo.phase === 'ready') {
-      btnUpdateAction.disabled = true;
-      btnUpdateDismiss.disabled = true;
-      updateModalStatus.textContent = t.restartingMsg;
-      try {
-        await fetch('/api/update/apply', { method: 'POST' });
-        waitForServerRestart();
-      } catch (e) {
-        updateModalStatus.textContent = (t.errorStatus || 'Error: ') + e.message;
-        btnUpdateAction.disabled = false;
+      function tabHint(key) {
+        if (key === 'change-2fa') return t.value.hint2fa;
+        if (key === 'change-2fa-team') return t.value.hint2faTeam;
+        if (key === 'check-plan') return t.value.hintCheckPlan;
+        if (key === 'get-token') return t.value.hintGetToken;
+        return '';
       }
-      return;
-    }
 
-    btnUpdateAction.disabled = true;
-    btnUpdateCancel.style.display = 'inline-block';
-    updateProgressWrap.style.display = 'block';
-    updateModalStatus.textContent = t.btnUpdateNow + '...';
+      const config = reactive({
+        proxies: '',
+        updateUrl: '',
+        disableLogs: false
+      });
+      const configSaving = ref(false);
+      const configStatus = ref('');
 
-    try {
-      const res = await fetch('/api/update/download', { method: 'POST' });
-      if (!res.ok) throw new Error('Download failed to start');
-      startUpdatePolling();
-    } catch (err) {
-      updateModalStatus.textContent = (t.errorStatus || 'Error: ') + err.message;
-      btnUpdateAction.disabled = false;
-    }
-  });
-}
+      const logFiles = ref([]);
+      const logsLoading = ref(false);
 
-if (btnUpdateCancel) {
-  btnUpdateCancel.addEventListener('click', async () => {
-    const t = I18N[currentLang] || I18N.en;
-    try {
-      await fetch('/api/update/cancel', { method: 'POST' });
-      stopUpdatePolling();
-      updateModalStatus.textContent = t.downloadCancelled;
-      checkUpdateState();
-    } catch (e) {
-      updateModalStatus.textContent = (t.errorStatus || 'Error: ') + e.message;
-    }
-  });
-}
+      const updateInfo = reactive({
+        phase: 'idle',
+        currentVersion: '1.2.0',
+        latestVersion: null,
+        targetVersion: null,
+        releaseUrl: null,
+        changelog: [],
+        updateAvailable: false,
+        percent: 0,
+        downloadedFormatted: '0 B',
+        totalFormatted: '0 B',
+        cancellable: false,
+        message: '',
+        error: ''
+      });
+      const updateModalVisible = ref(false);
+      const updateStatusMsg = ref('');
+      let updatePollTimer = null;
 
-function startUpdatePolling() {
-  if (updatePollTimer) clearInterval(updatePollTimer);
-  updatePollTimer = setInterval(async () => {
-    const t = I18N[currentLang] || I18N.en;
-    try {
-      const res = await fetch('/api/update/status');
-      const data = await res.json();
-      currentUpdateInfo = data;
+      const badgeText = computed(() => {
+        if (updateInfo.updateAvailable && updateInfo.latestVersion) {
+          return t.value.badgeNew(updateInfo.latestVersion);
+        }
+        return t.value.badgeNormal(updateInfo.currentVersion);
+      });
 
-      if (data.phase === 'downloading') {
-        updateProgressFill.style.width = data.percent + '%';
-        updateProgressPercent.textContent = data.percent + '%';
-        updateProgressMsg.textContent = t.downloadingMsg(data.downloadedFormatted, data.totalFormatted);
-      } else if (data.phase === 'verifying') {
-        updateProgressFill.style.width = '100%';
-        updateProgressPercent.textContent = '...';
-        updateProgressMsg.textContent = t.verifyingMsg;
-      } else if (data.phase === 'staging') {
-        updateProgressFill.style.width = '100%';
-        updateProgressPercent.textContent = '...';
-        updateProgressMsg.textContent = t.stagingMsg;
-      } else if (data.phase === 'ready') {
-        stopUpdatePolling();
-        renderUpdateUI(data);
-        updateModalStatus.textContent = t.readyMsg;
-      } else if (data.phase === 'failed') {
-        stopUpdatePolling();
-        updateModalStatus.textContent = (data.error || data.message);
-        btnUpdateAction.disabled = false;
-        btnUpdateCancel.style.display = 'none';
+      const updateChangelog = computed(() => {
+        if (updateInfo.changelog && updateInfo.changelog.length) {
+          return updateInfo.changelog;
+        }
+        return [currentLangRef.value === 'en' ? 'Performance optimizations and bug fixes.' : 'Bản cập nhật tối ưu hóa hiệu năng và sửa lỗi.'];
+      });
+
+      const showProgress = computed(() => {
+        return ['downloading', 'verifying', 'staging', 'ready'].includes(updateInfo.phase);
+      });
+
+      const progressMsg = computed(() => {
+        if (updateInfo.phase === 'downloading') {
+          return t.value.downloadingMsg(updateInfo.downloadedFormatted, updateInfo.totalFormatted);
+        }
+        if (updateInfo.phase === 'verifying') return t.value.verifyingMsg;
+        if (updateInfo.phase === 'staging') return t.value.stagingMsg;
+        if (updateInfo.phase === 'ready') return t.value.readyMsg;
+        return '';
+      });
+
+      const updateActionBtnText = computed(() => {
+        if (!updateInfo.updateAvailable) return t.value.btnCheckAgain;
+        if (updateInfo.phase === 'ready') return t.value.btnRestartInstall;
+        return t.value.btnUpdateNow;
+      });
+
+      const updateActionDisabled = computed(() => {
+        return ['downloading', 'verifying', 'staging'].includes(updateInfo.phase);
+      });
+
+      function setLanguage(lang) {
+        currentLangRef.value = lang;
+        currentLang = lang;
+        if (typeof localStorage !== 'undefined') localStorage.setItem('evel_lang', lang);
       }
-    } catch {}
-  }, 600);
-}
 
-function stopUpdatePolling() {
-  if (updatePollTimer) {
-    clearInterval(updatePollTimer);
-    updatePollTimer = null;
-  }
-}
+      async function runBatch(tab) {
+        const combos = tab.combos.trim();
+        if (!combos) return;
+        const total = Math.min(tabCombosCount(tab), 50);
 
-function waitForServerRestart() {
-  const t = I18N[currentLang] || I18N.en;
-  let attempts = 0;
-  const timer = setInterval(async () => {
-    attempts++;
-    updateModalStatus.textContent = t.waitingRestart(attempts);
-    try {
-      const res = await fetch('/api/health', { cache: 'no-store' });
-      if (res.ok) {
-        clearInterval(timer);
-        updateModalStatus.textContent = t.restartSuccess;
-        setTimeout(() => window.location.reload(), 1000);
+        tab.running = true;
+        tab.okOutput = '';
+        tab.failOutput = '';
+        tab.okCount = 0;
+        tab.failCount = 0;
+        tab.waitingSince = Date.now();
+
+        tab.statusText = t.value.runningStart(total);
+        const progressTimer = setInterval(() => {
+          const s = Math.floor((Date.now() - tab.waitingSince) / 1000);
+          tab.statusText = t.value.runningText(tab.okCount + tab.failCount, total, tab.okCount, tab.failCount, s);
+        }, 1000);
+
+        try {
+          const res = await fetch(tab.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ combos, proxies: tab.proxies })
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            tab.statusText = 'Error: ' + (data.error || res.statusText);
+            return;
+          }
+          await readResults(res.body, (r) => {
+            if (tab.isOk(r)) {
+              tab.okOutput += (tab.okOutput ? '\n' : '') + tab.formatOne(r);
+              tab.okCount++;
+            } else {
+              tab.failOutput += (tab.failOutput ? '\n' : '') + tab.formatOne(r);
+              tab.failCount++;
+            }
+            tab.waitingSince = Date.now();
+          });
+          tab.statusText = completionStatus(tab.okCount, tab.failCount, total, currentLangRef.value);
+        } catch (e) {
+          tab.statusText = `Error: ${e.message}. (${tab.okCount + tab.failCount}/${total})`;
+        } finally {
+          clearInterval(progressTimer);
+          tab.running = false;
+        }
       }
-    } catch {}
-    if (attempts > 60) {
-      clearInterval(timer);
-      updateModalStatus.textContent = 'Restart timeout. Please refresh page manually.';
+
+      function copyText(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+      }
+
+      function downloadText(text, filename) {
+        if (!text) return;
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      async function loadLogs() {
+        logsLoading.value = true;
+        try {
+          const res = await fetch('/api/logs');
+          logFiles.value = await res.json();
+        } catch (e) {
+          logFiles.value = [];
+        } finally {
+          logsLoading.value = false;
+        }
+      }
+
+      async function loadConfig() {
+        try {
+          const res = await fetch('/api/config');
+          const data = await res.json();
+          config.proxies = data.proxies || '';
+          config.updateUrl = data.updateUrl || '';
+          config.disableLogs = Boolean(data.disableLogs);
+          batchTabs.forEach((tab) => {
+            if (!tab.proxies) tab.proxies = config.proxies;
+          });
+        } catch (e) {}
+      }
+
+      async function saveConfig() {
+        configSaving.value = true;
+        configStatus.value = t.value.configSaving;
+        try {
+          const res = await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              proxies: config.proxies,
+              updateUrl: config.updateUrl,
+              disableLogs: config.disableLogs
+            })
+          });
+          configStatus.value = res.ok ? t.value.configSaved : t.value.configSaveError;
+          if (res.ok) {
+            batchTabs.forEach((tab) => { tab.proxies = config.proxies; });
+          }
+        } catch (e) {
+          configStatus.value = 'Error: ' + e.message;
+        } finally {
+          configSaving.value = false;
+        }
+      }
+
+      async function checkUpdate(manual = false) {
+        try {
+          const res = await fetch('/api/update/check' + (manual ? '?force=true' : ''));
+          const data = await res.json();
+          Object.assign(updateInfo, data);
+        } catch (e) {
+          if (manual) updateStatusMsg.value = 'Check update failed: ' + e.message;
+        }
+      }
+
+      function openUpdateModal() {
+        updateModalVisible.value = true;
+        checkUpdate(true);
+      }
+
+      async function handleUpdateAction() {
+        if (!updateInfo.updateAvailable) {
+          checkUpdate(true);
+          return;
+        }
+        if (updateInfo.phase === 'ready') {
+          updateStatusMsg.value = t.value.restartingMsg;
+          try {
+            await fetch('/api/update/apply', { method: 'POST' });
+            waitForServerRestart();
+          } catch (e) {
+            updateStatusMsg.value = 'Apply error: ' + e.message;
+          }
+          return;
+        }
+
+        updateStatusMsg.value = t.value.btnUpdateNow + '...';
+        try {
+          const res = await fetch('/api/update/download', { method: 'POST' });
+          if (!res.ok) throw new Error('Failed to start download');
+          startUpdatePolling();
+        } catch (e) {
+          updateStatusMsg.value = 'Error: ' + e.message;
+        }
+      }
+
+      async function cancelUpdate() {
+        try {
+          await fetch('/api/update/cancel', { method: 'POST' });
+          stopUpdatePolling();
+          updateStatusMsg.value = t.value.downloadCancelled;
+          checkUpdate();
+        } catch (e) {
+          updateStatusMsg.value = 'Cancel error: ' + e.message;
+        }
+      }
+
+      function startUpdatePolling() {
+        if (updatePollTimer) clearInterval(updatePollTimer);
+        updatePollTimer = setInterval(async () => {
+          try {
+            const res = await fetch('/api/update/status');
+            const data = await res.json();
+            Object.assign(updateInfo, data);
+
+            if (data.phase === 'ready') {
+              stopUpdatePolling();
+              updateStatusMsg.value = t.value.readyMsg;
+            } else if (data.phase === 'failed') {
+              stopUpdatePolling();
+              updateStatusMsg.value = (data.error || data.message);
+            }
+          } catch (e) {}
+        }, 600);
+      }
+
+      function stopUpdatePolling() {
+        if (updatePollTimer) {
+          clearInterval(updatePollTimer);
+          updatePollTimer = null;
+        }
+      }
+
+      function waitForServerRestart() {
+        let attempts = 0;
+        const timer = setInterval(async () => {
+          attempts++;
+          updateStatusMsg.value = t.value.waitingRestart(attempts);
+          try {
+            const res = await fetch('/api/health', { cache: 'no-store' });
+            if (res.ok) {
+              clearInterval(timer);
+              updateStatusMsg.value = t.value.restartSuccess;
+              setTimeout(() => window.location.reload(), 1000);
+            }
+          } catch (e) {}
+          if (attempts > 60) {
+            clearInterval(timer);
+            updateStatusMsg.value = 'Restart timeout. Please refresh page manually.';
+          }
+        }, 1000);
+      }
+
+      onMounted(() => {
+        loadConfig();
+        loadLogs();
+        setTimeout(checkUpdate, 1500);
+      });
+
+      return {
+        currentLang: currentLangRef,
+        t,
+        activeTab,
+        tabList,
+        batchTabs,
+        tabCombosCount,
+        tabHint,
+        config,
+        configSaving,
+        configStatus,
+        logFiles,
+        logsLoading,
+        updateInfo,
+        updateModalVisible,
+        updateStatusMsg,
+        updateChangelog,
+        badgeText,
+        showProgress,
+        progressMsg,
+        updateActionBtnText,
+        updateActionDisabled,
+        setLanguage,
+        runBatch,
+        copyText,
+        downloadText,
+        loadLogs,
+        saveConfig,
+        openUpdateModal,
+        handleUpdateAction,
+        cancelUpdate
+      };
     }
-  }, 1000);
+  }).mount('#app');
 }
-
-// Initialize language on startup (defaults to English in browser)
-if (typeof window !== 'undefined') {
-  setLanguage(currentLang);
-  setTimeout(checkUpdateState, 1500);
-}
-
 </script>
 </body>
 </html>
