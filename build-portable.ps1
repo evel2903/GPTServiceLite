@@ -28,6 +28,8 @@ Copy-Item (Join-Path $root 'core')   $dist -Recurse
 Copy-Item (Join-Path $root 'public') $dist -Recurse
 Copy-Item (Join-Path $root 'README.md') $dist
 Get-ChildItem $dist -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
+Get-ChildItem $dist -Recurse -Filter "*.log" | Remove-Item -Force -ErrorAction SilentlyContinue
+if (Test-Path (Join-Path $dist 'logs')) { Remove-Item (Join-Path $dist 'logs') -Recurse -Force -ErrorAction SilentlyContinue }
 
 Write-Host "[4/5] embedded Python $pyver ..."
 $zip = Join-Path $tmp "python-$pyver-embed.zip"

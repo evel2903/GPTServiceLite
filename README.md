@@ -1,7 +1,7 @@
-# GPTServiceLite
+# Evel GPT Service Lite
 
 > **Author:** Telegram [@sanlee035](https://t.me/sanlee035)  
-> **Repository:** [github.com/evel2903/GPTServiceLite](https://github.com/evel2903/GPTServiceLite)
+> **Repository:** [github.com/evel2903/Evel GPT Service Lite](https://github.com/evel2903/Evel GPT Service Lite)
 
 A high-performance, lightweight, zero-database automation suite and local web service for batch managing ChatGPT accounts:
 
@@ -24,6 +24,8 @@ No database, no external telemetry, and no heavy browser dependencies (Puppeteer
 - **Crash-Proof Logging**: Results are saved to date-stamped audit log files (`logs/YYYY-MM-DD.txt`) *before* client display.
 - **Uncertain Activation Recovery**: In the rare event of network interruption between enrollment and confirmation, a `combo_du_phong` backup is preserved so credentials are never locked out.
 - **Zero-Dependency Windows Executable**: Bundled with an embedded CPython runtime via [pkg](https://github.com/vercel/pkg) — run with a double-click without installing Node.js or Python.
+- **Multi-Language Support (i18n)**: Full English (default) and Vietnamese language localization with instant toggle and remembered preference.
+- **Privacy-First Deployment & Log Suppression**: Audit logs can be omitted or completely disabled during deploy/production via `DISABLE_LOGS=1` or the Settings tab to ensure zero sensitive credential residue.
 - **In-Place Auto-Update with Auto-Rollback**: One-click updates that overcome Windows file locking, verify SHA-256 checksums, preserve user configs and logs, and roll back automatically if the new version fails to boot.
 - **Docker Support**: Ready for containerized deployment on Linux and server environments.
 
@@ -33,7 +35,7 @@ No database, no external telemetry, and no heavy browser dependencies (Puppeteer
 
 ### Option 1: Portable Windows Executable (Recommended)
 
-1. Download the latest release package (`gptservicelite-vX.X.X-windows-x64.zip`) from [GitHub Releases](https://github.com/evel2903/GPTServiceLite/releases).
+1. Download the latest release package (`gptservicelite-vX.X.X-windows-x64.zip`) from [GitHub Releases](https://github.com/evel2903/Evel GPT Service Lite/releases).
 2. Extract the archive to any folder.
 3. Double-click `gptservicelite.exe`. The server starts and opens [http://localhost:8099](http://localhost:8099) in your browser.
 
@@ -51,8 +53,8 @@ No database, no external telemetry, and no heavy browser dependencies (Puppeteer
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/evel2903/GPTServiceLite.git
-cd GPTServiceLite
+git clone https://github.com/evel2903/Evel GPT Service Lite.git
+cd Evel GPT Service Lite
 
 # 2. Install Python dependencies
 pip install -r core/requirements.txt
@@ -127,7 +129,7 @@ socks5://host:port
 
 ## In-Place Portable Auto-Update
 
-GPTServiceLite features an enterprise-grade portable self-update system modeled after `EvelProxyTool`:
+Evel GPT Service Lite features an enterprise-grade portable self-update system modeled after `EvelProxyTool`:
 
 ```
 [1. Check Update]      -> Polls portable-update-windows.json -> Compares Semver
@@ -175,6 +177,7 @@ Upload all three files as assets to your GitHub Release tag (e.g. `v1.1.0`).
 | `PYTHON_BIN` | `python3` (or embedded `python.exe`) | Path to the Python executable |
 | `CONFIG_PATH` | `./config.json` | Path to persistent configuration file |
 | `LOG_DIR` | `./logs` | Directory for date-stamped audit logs |
+| `DISABLE_LOGS` | `0` | Set to `1` to completely disable writing credential audit logs to disk |
 | `UPDATE_MANIFEST_URL` | *Official GitHub Release URL* | URL for `portable-update-windows.json` |
 | `NO_OPEN_BROWSER` | *unset* | Set to `1` to suppress auto-opening browser on startup |
 

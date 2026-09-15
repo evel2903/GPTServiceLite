@@ -44,6 +44,10 @@ Copy-Item (Join-Path $root "core") $updateStaging -Recurse
 Copy-Item (Join-Path $root "public") $updateStaging -Recurse
 Copy-Item (Join-Path $root "README.md") $updateStaging
 Copy-Item (Join-Path $root "package.json") $updateStaging
+# Ensure NO log files are ever included in deploy packages
+if (Test-Path (Join-Path $updateStaging "logs")) { Remove-Item (Join-Path $updateStaging "logs") -Recurse -Force -ErrorAction SilentlyContinue }
+Get-ChildItem $updateStaging -Recurse -Filter "*.log" | Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem $updateStaging -Recurse -Filter "*.txt" | Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}\.txt$' } | Remove-Item -Force -ErrorAction SilentlyContinue
 Get-ChildItem $updateStaging -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 $updateZip = Join-Path $releaseDir "gptservicelite-update-v$Version-windows-x64.zip"
@@ -59,6 +63,9 @@ if (Test-Path (Join-Path $fullDist "python")) {
     Copy-Item (Join-Path $root "core") $fullDist -Recurse -Force
     Copy-Item (Join-Path $root "public") $fullDist -Recurse -Force
     Get-ChildItem $fullDist -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path (Join-Path $fullDist "logs")) { Remove-Item (Join-Path $fullDist "logs") -Recurse -Force -ErrorAction SilentlyContinue }
+    Get-ChildItem $fullDist -Recurse -Filter "*.log" | Remove-Item -Force -ErrorAction SilentlyContinue
+    Get-ChildItem $fullDist -Recurse -Filter "*.txt" | Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}\.txt$' } | Remove-Item -Force -ErrorAction SilentlyContinue
     Compress-Archive -Path "$fullDist\*" -DestinationPath $fullZip -Force
 } else {
     Write-Host "Notice: dist\gptservicelite\python not found. Using compact bundle as full asset." -ForegroundColor DarkYellow

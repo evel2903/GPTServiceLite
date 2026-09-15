@@ -6,18 +6,21 @@ const { exec } = require('node:child_process');
 const { change2faBatch, MAX_BATCH: MAX_2FA } = require('./lib/change2fa');
 const { checkPlanBatch, MAX_BATCH: MAX_CHECK } = require('./lib/checkPlan');
 const { getTokenBatch, MAX_BATCH: MAX_TOKEN } = require('./lib/getToken');
-const { logResult, listLogs, logPath } = require('./lib/logger');
+const { logResult, listLogs, logPath, setDisableLogs } = require('./lib/logger');
 const { BASE_DIR } = require('./lib/paths');
 const updater = require('./lib/updater');
 
-// Persisted config (proxy list, etc.) lives in one JSON file next to the app -- survives browser
-// clears, editable by hand. Under a packaged .exe this resolves next to the exe, not the snapshot.
+// Persisted config (proxy list, updateUrl, disableLogs, etc.) lives in one JSON file next to the app.
 const CONFIG_PATH = process.env.CONFIG_PATH || path.join(BASE_DIR, 'config.json');
 async function readConfig() {
   try {
-    return JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8'));
+    const cfg = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8'));
+    if (typeof cfg.disableLogs === 'boolean') {
+      setDisableLogs(cfg.disableLogs);
+    }
+    return cfg;
   } catch {
-    return { proxies: '', updateUrl: '' }; // missing/corrupt -> empty defaults
+    return { proxies: '', updateUrl: '', disableLogs: false };
   }
 }
 
@@ -25,9 +28,6 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(BASE_DIR, 'public')));
 
-// Streams one JSON result per line (NDJSON) as each combo finishes, instead of buffering the
-// whole batch -- a 50-combo run is sequential logins, could take minutes, and the old
-// wait-for-everything response left the UI with no sign of progress.
 function batchRoute(handler, action) {
   return async (req, res) => {
     const combos = req.body && req.body.combos;
@@ -42,11 +42,11 @@ function batchRoute(handler, action) {
     res.flushHeaders();
     try {
       await handler(combos, async (result) => {
-        await logResult(action, result); // persist before displaying a changed secret
+        await logResult(action, result);
         if (!res.destroyed) res.write(JSON.stringify(result) + '\n');
       }, proxies);
     } catch (error) {
-      console.error(`[${action}] batch failed:`, error.message);
+      if (process.env.NODE_ENV !== 'production') console.error(`[${action}] batch failed:`, error.message);
       if (!res.destroyed) res.write(JSON.stringify({ ok: false, error: 'Batch interrupted: ' + error.message }) + '\n');
     } finally {
       res.end();
@@ -73,7 +73,7 @@ app.get('/api/logs/:name', (req, res) => {
     res.status(404).json({ error: 'not found' });
     return;
   }
-  res.download(file, req.params.name); // sets Content-Disposition: attachment
+  res.download(file, req.params.name);
 });
 
 app.get('/api/config', async (req, res) => {
@@ -84,7 +84,9 @@ app.post('/api/config', async (req, res) => {
   const current = await readConfig();
   const proxies = req.body && typeof req.body.proxies === 'string' ? req.body.proxies : (current.proxies || '');
   const updateUrl = req.body && typeof req.body.updateUrl === 'string' ? req.body.updateUrl : (current.updateUrl || '');
-  await fs.writeFile(CONFIG_PATH, JSON.stringify({ proxies, updateUrl }, null, 2));
+  const disableLogs = req.body && typeof req.body.disableLogs === 'boolean' ? req.body.disableLogs : Boolean(current.disableLogs);
+  setDisableLogs(disableLogs);
+  await fs.writeFile(CONFIG_PATH, JSON.stringify({ proxies, updateUrl, disableLogs }, null, 2));
   res.json({ ok: true });
 });
 
@@ -111,7 +113,7 @@ app.get('/api/update/check', async (req, res) => {
 app.post('/api/update/download', async (req, res) => {
   try {
     updater.startDownload().catch((err) => {
-      console.error('[updater] download error:', err.message);
+      if (process.env.NODE_ENV !== 'production') console.error('[updater] download error:', err.message);
     });
     res.json({ ok: true, status: updater.getStatus() });
   } catch (error) {
@@ -142,14 +144,14 @@ if (require.main === module) {
   const BIND_IP = process.env.BIND_IP || '0.0.0.0';
   app.listen(PORT, BIND_IP, async () => {
     const url = `http://localhost:${PORT}`;
-    console.log(`GPTServiceLite listening on ${BIND_IP}:${PORT}  ->  ${url}`);
+    console.log(`Evel GPT Service Lite listening on ${BIND_IP}:${PORT}  ->  ${url}`);
 
     // Check for auto-update ACK argument from updater helper
     const ackIdx = process.argv.indexOf('--portable-update-ack');
     if (ackIdx !== -1 && process.argv[ackIdx + 1]) {
       const ackPath = process.argv[ackIdx + 1];
       try {
-        let appVer = '1.0.0';
+        let appVer = '1.1.1';
         try { appVer = require('./package.json').version; } catch {}
         await fs.writeFile(ackPath, JSON.stringify({
           ok: true,
@@ -157,9 +159,9 @@ if (require.main === module) {
           pid: process.pid,
           time: new Date().toISOString()
         }), 'utf8');
-        console.log(`[updater] Health ACK verified: ${ackPath}`);
+        if (process.env.NODE_ENV !== 'production') console.log(`[updater] Health ACK verified: ${ackPath}`);
       } catch (ackErr) {
-        console.error('[updater] Failed to write ACK file:', ackErr.message);
+        if (process.env.NODE_ENV !== 'production') console.error('[updater] Failed to write ACK file:', ackErr.message);
       }
     }
 

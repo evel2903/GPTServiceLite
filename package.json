@@ -1,8 +1,8 @@
 {
-    "name":  "gptservicelite",
-    "version":  "1.1.1",
+    "name":  "evel-gpt-service-lite",
+    "version":  "1.2.0",
     "private":  true,
-    "description":  "Standalone web app for personal/workspace ChatGPT account change-2FA and Check Plan, no auth/db/bot.",
+    "description":  "Evel GPT Service Lite - Standalone web app for personal/workspace ChatGPT account change-2FA, check plan, and access token retrieval with in-place auto-update.",
     "main":  "server.js",
     "bin":  "server.js",
     "scripts":  {
