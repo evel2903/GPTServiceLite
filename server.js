@@ -5,8 +5,10 @@ const { exec } = require('node:child_process');
 
 const { change2faBatch, MAX_BATCH: MAX_2FA } = require('./lib/change2fa');
 const { checkPlanBatch, MAX_BATCH: MAX_CHECK } = require('./lib/checkPlan');
+const { getTokenBatch, MAX_BATCH: MAX_TOKEN } = require('./lib/getToken');
 const { logResult, listLogs, logPath } = require('./lib/logger');
 const { BASE_DIR } = require('./lib/paths');
+const updater = require('./lib/updater');
 
 // Persisted config (proxy list, etc.) lives in one JSON file next to the app -- survives browser
 // clears, editable by hand. Under a packaged .exe this resolves next to the exe, not the snapshot.
@@ -15,7 +17,7 @@ async function readConfig() {
   try {
     return JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8'));
   } catch {
-    return { proxies: '' }; // missing/corrupt -> empty defaults
+    return { proxies: '', updateUrl: '' }; // missing/corrupt -> empty defaults
   }
 }
 
@@ -59,6 +61,7 @@ app.post('/api/change-2fa-team', batchRoute(
 ));
 app.post('/api/check-plan', batchRoute(checkPlanBatch, 'check-plan'));
 app.post('/api/check-plus', batchRoute(checkPlanBatch, 'check-plan')); // compatibility
+app.post('/api/get-token', batchRoute(getTokenBatch, 'get-token'));
 
 app.get('/api/logs', async (req, res) => {
   res.json(await listLogs());
@@ -78,21 +81,88 @@ app.get('/api/config', async (req, res) => {
 });
 
 app.post('/api/config', async (req, res) => {
-  const proxies = req.body && typeof req.body.proxies === 'string' ? req.body.proxies : '';
-  await fs.writeFile(CONFIG_PATH, JSON.stringify({ proxies }, null, 2));
+  const current = await readConfig();
+  const proxies = req.body && typeof req.body.proxies === 'string' ? req.body.proxies : (current.proxies || '');
+  const updateUrl = req.body && typeof req.body.updateUrl === 'string' ? req.body.updateUrl : (current.updateUrl || '');
+  await fs.writeFile(CONFIG_PATH, JSON.stringify({ proxies, updateUrl }, null, 2));
   res.json({ ok: true });
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, maxBatch: { twofa: MAX_2FA, check: MAX_CHECK } });
+  res.json({ ok: true, maxBatch: { twofa: MAX_2FA, check: MAX_CHECK, token: MAX_TOKEN } });
+});
+
+// Auto-update endpoints
+app.get('/api/update/status', (req, res) => {
+  res.json(updater.getStatus());
+});
+
+app.get('/api/update/check', async (req, res) => {
+  try {
+    const config = await readConfig();
+    const manifestUrl = (req.query && req.query.url) || config.updateUrl || undefined;
+    const status = await updater.checkUpdate({ manifestUrl });
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/update/download', async (req, res) => {
+  try {
+    updater.startDownload().catch((err) => {
+      console.error('[updater] download error:', err.message);
+    });
+    res.json({ ok: true, status: updater.getStatus() });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/update/cancel', async (req, res) => {
+  try {
+    const status = await updater.cancelDownload();
+    res.json({ ok: true, status });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/update/apply', async (req, res) => {
+  try {
+    const result = await updater.applyUpdate();
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 if (require.main === module) {
   const PORT = process.env.PORT || 8099;
   const BIND_IP = process.env.BIND_IP || '0.0.0.0';
-  app.listen(PORT, BIND_IP, () => {
+  app.listen(PORT, BIND_IP, async () => {
     const url = `http://localhost:${PORT}`;
     console.log(`GPTServiceLite listening on ${BIND_IP}:${PORT}  ->  ${url}`);
+
+    // Check for auto-update ACK argument from updater helper
+    const ackIdx = process.argv.indexOf('--portable-update-ack');
+    if (ackIdx !== -1 && process.argv[ackIdx + 1]) {
+      const ackPath = process.argv[ackIdx + 1];
+      try {
+        let appVer = '1.0.0';
+        try { appVer = require('./package.json').version; } catch {}
+        await fs.writeFile(ackPath, JSON.stringify({
+          ok: true,
+          version: appVer,
+          pid: process.pid,
+          time: new Date().toISOString()
+        }), 'utf8');
+        console.log(`[updater] Health ACK verified: ${ackPath}`);
+      } catch (ackErr) {
+        console.error('[updater] Failed to write ACK file:', ackErr.message);
+      }
+    }
+
     // Double-click .exe convenience: open the default browser. Dev runs (node) stay quiet.
     if (process.pkg && process.env.NO_OPEN_BROWSER !== '1') exec(`start "" "${url}"`);
   });

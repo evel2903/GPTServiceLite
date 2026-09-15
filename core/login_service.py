@@ -1221,6 +1221,7 @@ async def login_pure_request(
         expires_at=expires_at,
         created_at=now,
         last_used_at=now,
+        raw_session=session_payload,
     )
 
 

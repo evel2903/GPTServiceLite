@@ -12,6 +12,7 @@ test('HTTP routes stream workspace/plan results, save recovery logs and report b
   worker.runPython = async (script, args) => {
     calls.push({ script, args });
     if (script === 'change_2fa.py') return { ok: true, totp_secret: 'NEW-FAKE-SECRET' };
+    if (script === 'get_token.py') return { ok: true, access_token: 'fake-access-token-123', session: { account_id: 'test' } };
     return { ok: true, plan: 'free', plans: ['free', 'team', 'k12'], plans_complete: true, workspaces: [{ id: 'school', plan: 'k12' }] };
   };
   const { app, batchRoute } = require('../server');
@@ -31,10 +32,20 @@ test('HTTP routes stream workspace/plan results, save recovery logs and report b
   const team = JSON.parse((await teamResponse.text()).trim());
   assert.equal(team.newTotp, 'NEW-FAKE-SECRET');
   assert.deepEqual(calls[0].args, ['test@example.test|fake-password|OLD', '--workspace']);
+
+  const tokenResponse = await post('/api/get-token');
+  assert.match(tokenResponse.headers.get('content-type'), /application\/x-ndjson/);
+  const tokenResult = JSON.parse((await tokenResponse.text()).trim());
+  assert.equal(tokenResult.accessToken, 'fake-access-token-123');
+  assert.equal(tokenResult.ok, true);
+
   const names = await fs.readdir(logDir);
   const log = await fs.readFile(path.join(logDir, names[0]), 'utf8');
   assert.match(log, /\[change-2fa-team\]\tOK/);
   assert.match(log, /combo_moi: test@example.test\|fake-password\|NEW-FAKE-SECRET/);
+  assert.match(log, /\[get-token\]\tOK/);
+  assert.match(log, /test@example\.test\|fake-access-token-123/);
+
   for (const route of ['/api/check-plan', '/api/check-plus']) {
     const result = JSON.parse((await (await post(route)).text()).trim());
     assert.deepEqual(result.plans, ['free', 'team', 'k12']);

@@ -1,52 +1,72 @@
 # GPTServiceLite
 
-> **Author:** Telegram [@sanlee035](https://t.me/sanlee035)
+> **Author:** Telegram [@sanlee035](https://t.me/sanlee035)  
+> **Repository:** [github.com/evel2903/GPTServiceLite](https://github.com/evel2903/GPTServiceLite)
 
-A standalone, lightweight, zero-database local web service and batch automation tool for ChatGPT accounts:
+A high-performance, lightweight, zero-database automation suite and local web service for batch managing ChatGPT accounts:
 
-- **Change 2FA (Personal / Standard)** — Rotate TOTP secrets for ChatGPT accounts while keeping passwords intact.
-- **Change 2FA (Team / Workspace)** — Rotate TOTP factors in the context of Team / Business / Enterprise / Edu / K12 workspaces.
-- **Check Plan** — Inspect active subscriptions and quotas across personal and organization workspaces (Free, Plus, Pro, Go, Team, Business, Enterprise, Edu, K12).
+- **Change 2FA (Personal / Standard)** — Rotate TOTP 2FA secret keys for personal ChatGPT accounts while preserving passwords.
+- **Change 2FA (Team / Workspace)** — Rotate TOTP 2FA factors within Team, Business, Enterprise, Edu, or K12 organization workspace contexts.
+- **Check Plan & Quotas** — Inspect active subscriptions across personal and organization workspaces (Free, Plus, Pro, Go, Team, Business, Enterprise, Edu, K12) with quota limits and expiry days.
+- **Retrieve Access Tokens** — Authenticate and retrieve live session Access Tokens (`chatgpt.com/api/auth/session`) without altering account credentials.
+- **In-Place Portable Auto-Update** — Built-in zero-installer self-update mechanism with SHA-256 verification, atomic file swapping, health handshake (ACK), and automatic rollback.
 
-No accounts, no admin passwords, no database, and no telemetry. Each request directly triggers high-performance Python automation routines in `core/` via pure HTTP with browser impersonation (`curl_cffi`) and Cloudflare Turnstile token resolution. Results stream line-by-line via NDJSON in real time.
-
----
-
-## Features
-
-- **Automated Workspace Selection**: Automatically detects and selects organization / Team workspaces when logging into multi-workspace accounts.
-- **Pure-HTTP Execution**: No heavyweight headless browsers (Puppeteer/Playwright); requests are executed with TLS/JA3 impersonation for speed and reliability.
-- **Streaming NDJSON Output**: Real-time batch progress without waiting for the entire queue to complete.
-- **Per-Account Proxy Rotation**: Round-robins proxies across batch accounts to prevent IP rate-limiting.
-- **Crash-Proof Logging**: Results are saved to disk (`logs/YYYY-MM-DD.txt`) *before* streaming to the frontend to prevent data loss.
-- **Portable Windows Executable**: Bundled with an embedded Python runtime via [pkg](https://github.com/vercel/pkg) — run with a double-click without installing Node or Python.
-- **Docker Support**: Containerized deployment ready for Linux/Docker environments.
+No database, no external telemetry, and no heavy browser dependencies (Puppeteer/Playwright). All operations use pure HTTP with TLS/JA3 browser impersonation (`curl_cffi`) and automated Cloudflare Turnstile resolution. Results stream line-by-line via NDJSON in real time.
 
 ---
 
-## Getting Started
+## Key Features
 
-### Prerequisites
+- **Automated Workspace Context Detection**: Automatically identifies, navigates, and enrolls TOTP factors across multiple organizational workspaces.
+- **Pure-HTTP Impersonation**: High throughput and minimal resource usage via `curl_cffi` (Chrome TLS fingerprint impersonation).
+- **Streaming NDJSON Output**: Real-time batch progress without waiting for the full queue to finish.
+- **Per-Account Proxy Rotation**: Round-robins proxies across batch accounts (HTTP, HTTPS, SOCKS5) to prevent rate limits.
+- **Crash-Proof Logging**: Results are saved to date-stamped audit log files (`logs/YYYY-MM-DD.txt`) *before* client display.
+- **Uncertain Activation Recovery**: In the rare event of network interruption between enrollment and confirmation, a `combo_du_phong` backup is preserved so credentials are never locked out.
+- **Zero-Dependency Windows Executable**: Bundled with an embedded CPython runtime via [pkg](https://github.com/vercel/pkg) — run with a double-click without installing Node.js or Python.
+- **In-Place Auto-Update with Auto-Rollback**: One-click updates that overcome Windows file locking, verify SHA-256 checksums, preserve user configs and logs, and roll back automatically if the new version fails to boot.
+- **Docker Support**: Ready for containerized deployment on Linux and server environments.
 
-- Node.js (v18+)
-- Python (3.10+)
+---
 
-### Local Installation
+## Quick Start
+
+### Option 1: Portable Windows Executable (Recommended)
+
+1. Download the latest release package (`gptservicelite-vX.X.X-windows-x64.zip`) from [GitHub Releases](https://github.com/evel2903/GPTServiceLite/releases).
+2. Extract the archive to any folder.
+3. Double-click `gptservicelite.exe`. The server starts and opens [http://localhost:8099](http://localhost:8099) in your browser.
+
+*No Node.js, Python, or administrative installation required.*
+
+---
+
+### Option 2: Running from Source
+
+#### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **Python**: v3.10 or higher
+
+#### Installation
 
 ```bash
-# 1. Install Python dependencies
+# 1. Clone repository
+git clone https://github.com/evel2903/GPTServiceLite.git
+cd GPTServiceLite
+
+# 2. Install Python dependencies
 pip install -r core/requirements.txt
 
-# 2. Install Node.js dependencies
+# 3. Install Node.js dependencies
 npm install
 
-# 3. Start the application
+# 4. Start the server
 npm start
 ```
 
-By default, the server listens on `0.0.0.0:8099`. Open [http://localhost:8099](http://localhost:8099) in your browser.
+Open [http://localhost:8099](http://localhost:8099) in your browser.
 
-> **Windows Note:** If `python3` is not on your `PATH`, configure your Python executable before starting:
+> **Windows Note:** If `python3` is not in your `PATH`, specify your Python executable:
 > ```powershell
 > $env:PYTHON_BIN = "python"
 > npm start
@@ -54,26 +74,13 @@ By default, the server listens on `0.0.0.0:8099`. Open [http://localhost:8099](h
 
 ---
 
-## Configuration & Environment Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `8099` | HTTP server port |
-| `BIND_IP` | `0.0.0.0` | Listen host IP |
-| `PYTHON_BIN` | `python3` | Path or command for the Python binary (e.g. `python` on Windows) |
-| `CONFIG_PATH` | `./config.json` | Path to persistent configuration file (saved proxies) |
-| `LOG_DIR` | `./logs` | Directory for date-stamped audit logs |
-| `NO_OPEN_BROWSER` | *unset* | Set to `1` to prevent packaged `.exe` from auto-opening the browser |
-
----
-
-## Docker Deployment
+### Option 3: Docker Deployment
 
 ```bash
 # Build the Docker image
 docker build -t gptservicelite .
 
-# Run the container
+# Run container
 docker run -d \
   --name gptservicelite \
   -p 8099:8099 \
@@ -84,41 +91,22 @@ docker run -d \
 
 ---
 
-## Portable Windows Executable (Zero-Dependency)
+## Web Interface & Usage Guide
 
-You can package the entire app into a self-contained folder containing `gptservicelite.exe` and an embedded Python runtime. It runs on clean Windows machines **without installing Node.js or Python**.
+The local web interface provides a tabbed dashboard:
 
-### Build Instructions
-
-On a Windows development machine:
-
-```powershell
-npm run build:portable
-```
-
-The build output is located at `dist\gptservicelite\`:
-- `gptservicelite.exe` — Packaged Node.js binary
-- `python\` — Embedded Python 3.14 + required dependencies
-- `core\` — Python scripts
-- `public\` — Frontend assets
-
-Simply zip the `dist\gptservicelite\` directory and distribute it. Launching `gptservicelite.exe` automatically starts the server and opens your default browser.
-
----
-
-## Usage Guide
-
-Open [http://localhost:8099](http://localhost:8099). The interface includes 5 tabs:
-
-1. **Change 2FA**
-2. **Change 2FA Team / K12**
-3. **Check Plan**
-4. **Logs**
-5. **Configuration**
+| Tab | Purpose | Output Format |
+|---|---|---|
+| **Change 2FA** | Rotate standard 2FA secrets | `email\|password\|new_2fa_secret` |
+| **Change 2FA Team / K12** | Rotate 2FA under organization workspaces | `email\|password\|new_2fa_secret` |
+| **Check Plan** | Inspect subscription plans and quota details | `email\|plan=...\|plans=...\|workspaces=...` |
+| **Lấy Access Token** | Retrieve session Access Token | `email\|access_token` |
+| **Logs** | View and download daily audit logs | `.txt` files |
+| **Cấu hình (Config)** | Persist default proxy list and custom update URL | Saved to `config.json` |
 
 ### Input Format
 
-Paste accounts into the **Input** textarea, one per line (up to 50 accounts per batch):
+Enter accounts one per line into the **Input** textarea (up to 50 accounts per batch):
 
 ```text
 email@example.com|password|CURRENT_2FA_SECRET
@@ -126,7 +114,7 @@ email@example.com|password|CURRENT_2FA_SECRET
 
 ### Proxy Format
 
-Paste proxies into the **Proxy** textarea (or save defaults in the **Configuration** tab). Proxies are round-robined across accounts:
+Enter proxies into the **Proxy** textarea (or set defaults in the **Configuration** tab). Proxies rotate across accounts automatically:
 
 ```text
 host:port
@@ -135,37 +123,109 @@ http://username:password@host:port
 socks5://host:port
 ```
 
-### Results & Safety
+---
 
-- **OK Column**: Successful operations display the new combo (`email|pass|NEW_2FA_SECRET`).
-- **FAIL Column**: Shows failure stage and descriptive error reasons.
-- **Uncertain Activations**: If a network interruption occurs after factor enrollment but before confirmation, the tool marks the account as uncertain and provides a recovery secret (`combo_du_phong`) so credentials are never locked out.
-- **Audit Logs**: Every result is written to `logs/YYYY-MM-DD.txt` on the server before client transmission.
+## In-Place Portable Auto-Update
+
+GPTServiceLite features an enterprise-grade portable self-update system modeled after `EvelProxyTool`:
+
+```
+[1. Check Update]      -> Polls portable-update-windows.json -> Compares Semver
+[2. Download & Stage]  -> Stream download to %TEMP% -> Verify SHA-256 -> Extract to /staging
+[3. Spawn Helper]      -> Generates update-descriptor.json -> Spawns background PowerShell helper
+                          -> Parent application exits cleanly (releasing Windows file lock)
+[4. Atomic Swap]       -> Helper waits for parent PID exit -> Backs up current files to .update-backup/
+                          -> Copies new files into place (preserving config.json, logs/, python/)
+[5. ACK & Rollback]    -> Launches new build with --portable-update-ack
+                          -> Boot successful: ACK file created -> Helper removes backup -> Complete!
+                          -> Boot failed or timeout (45s): Helper restores backup -> Relaunches old version!
+```
+
+### Checking & Applying Updates
+- Click the version badge in the top-right corner of the web interface.
+- If a new version is published, the badge pulses with `🔔 Bản mới vX.X.X!`.
+- The modal presents the changelog, download size, live progress bar, and one-click update trigger.
+- The web page automatically refreshes once the server successfully restarts.
 
 ---
 
-## API Endpoints
+## Building & Packaging Releases
 
-- `POST /api/change-2fa` — Batch rotate TOTP for standard accounts (NDJSON streaming).
-- `POST /api/change-2fa-team` — Batch rotate TOTP with workspace context (NDJSON streaming).
-- `POST /api/check-plan` — Batch inspect account plans and quotas (NDJSON streaming; legacy alias `/api/check-plus`).
-- `GET /api/logs` — List available log files.
-- `GET /api/logs/:name` — Download a specific log file.
-- `GET /api/config` — Retrieve saved configuration (proxies).
-- `POST /api/config` — Update configuration.
-- `GET /api/health` — Health check endpoint.
+Use the included PowerShell automation script to package release binaries and generate the update manifest:
+
+```powershell
+powershell -File scripts/make-release.ps1 -Version "1.1.0" -Changelog "Added Access Token extraction and in-place auto-update"
+```
+
+The script produces 3 files in `dist/release-v1.1.0/`:
+1. **`portable-update-windows.json`** — Release manifest containing version, changelog, and SHA-256 hashes.
+2. **`gptservicelite-update-v1.1.0-windows-x64.zip`** — Compact update archive (~10-15 MB) for existing users (excludes the Python runtime).
+3. **`gptservicelite-v1.1.0-windows-x64.zip`** — Full distribution bundle (~45 MB) containing the embedded Python runtime.
+
+Upload all three files as assets to your GitHub Release tag (e.g. `v1.1.0`).
 
 ---
 
-## Security Warning
+## Configuration & Environment Variables
 
-This application **does not include user authentication**. Anyone with network access to the web interface can execute batch operations using provided credentials. 
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8099` | Server port |
+| `BIND_IP` | `0.0.0.0` | Server bind IP address |
+| `PYTHON_BIN` | `python3` (or embedded `python.exe`) | Path to the Python executable |
+| `CONFIG_PATH` | `./config.json` | Path to persistent configuration file |
+| `LOG_DIR` | `./logs` | Directory for date-stamped audit logs |
+| `UPDATE_MANIFEST_URL` | *Official GitHub Release URL* | URL for `portable-update-windows.json` |
+| `NO_OPEN_BROWSER` | *unset* | Set to `1` to suppress auto-opening browser on startup |
 
-- **Do not** expose this port publicly to the internet without a reverse proxy (e.g. Nginx, Cloudflare Access) enforcing authentication or IP whitelisting.
-- `config.json` and files in `logs/` contain plain-text credentials and proxies. Ensure appropriate filesystem permissions on the host system.
+---
+
+## API Reference
+
+### Batch Operations (Streaming NDJSON)
+- `POST /api/change-2fa` — Rotate TOTP secrets for standard personal accounts.
+- `POST /api/change-2fa-team` — Rotate TOTP secrets within organizational workspace context.
+- `POST /api/check-plan` — Inspect active subscription tiers and workspace quotas.
+- `POST /api/get-token` — Retrieve ChatGPT session Access Tokens.
+
+### System & Configuration
+- `GET /api/health` — System health check and batch limit parameters.
+- `GET /api/logs` — List all daily log files.
+- `GET /api/logs/:name` — Download a specific log file attachment.
+- `GET /api/config` — Retrieve persisted settings (`proxies`, `updateUrl`).
+- `POST /api/config` — Update and persist settings.
+
+### Auto-Update
+- `GET /api/update/status` — Get active update phase and download progress.
+- `GET /api/update/check` — Query remote manifest for newer releases (`?force=true`).
+- `POST /api/update/download` — Start streaming download and staging of update archive.
+- `POST /api/update/cancel` — Abort active update download.
+- `POST /api/update/apply` — Trigger background helper swap, health handshake, and restart.
+
+---
+
+## Testing
+
+```bash
+# Run Python unit & integration tests
+pytest
+
+# Run Node.js tests (HTTP routes, NDJSON streaming, semver, updater)
+npm test
+```
+
+All 46 Python tests and 24 Node.js tests run in under 2 seconds.
+
+---
+
+## Security Notice
+
+- This software is intended for local or private network administration. It does **not** enforce HTTP authentication by default.
+- If exposing this service to the public internet, place it behind a reverse proxy (e.g., Nginx, Caddy, Cloudflare Access) with mandatory authentication and TLS termination.
+- Credentials and proxy definitions in `config.json` and `logs/` are stored in plain text. Ensure appropriate operating system file permissions.
 
 ---
 
 ## License
 
-Private & Proprietary / MIT (refer to repository terms).
+Private & Proprietary / MIT License. Refer to repository terms for details.

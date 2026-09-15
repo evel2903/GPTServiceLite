@@ -39,14 +39,59 @@
   button.secondary { background: #333; }
   .status { font-size: 12px; color: #999; }
   .hint { font-size: 11px; color: #777; margin: 0; }
+
+  .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .header-row h1 { margin: 0; font-size: 18px; }
+  .update-badge {
+    background: #21262d; border: 1px solid #30363d; border-radius: 14px; padding: 4px 12px;
+    color: #8b949e; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.2s ease;
+  }
+  .update-badge:hover { border-color: #8b949e; color: #c9d1d9; }
+  .update-badge.has-update {
+    background: #1f6feb22; border-color: #388bfd; color: #58a6ff; font-weight: 600;
+    animation: pulse-update 2s infinite;
+  }
+  @keyframes pulse-update {
+    0% { box-shadow: 0 0 0 0 rgba(56, 139, 253, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(56, 139, 253, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(56, 139, 253, 0); }
+  }
+  .update-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none;
+    align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(2px);
+  }
+  .update-modal-overlay.active { display: flex; }
+  .update-modal {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px; width: 520px;
+    max-width: 90vw; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .update-modal h2 { margin: 0 0 12px; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .update-modal .close-btn { background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+  .update-modal .changelog-box {
+    background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px;
+    max-height: 180px; overflow-y: auto; margin: 12px 0; font-size: 13px;
+  }
+  .update-modal .changelog-box ul { margin: 0; padding-left: 20px; }
+  .update-modal .changelog-box li { margin-bottom: 4px; }
+  .progress-container { margin: 12px 0; display: none; }
+  .progress-bar-bg { background: #21262d; border-radius: 4px; height: 8px; overflow: hidden; width: 100%; }
+  .progress-bar-fill { background: #238636; height: 100%; width: 0%; transition: width 0.2s ease; }
+  .progress-text { font-size: 11px; color: #8b949e; display: flex; justify-content: space-between; margin-top: 4px; }
 </style>
 </head>
 <body>
-<h1>GPTServiceLite <span style="font-size:12px;color:#777;font-weight:400;">— tác giả: <a href="https://t.me/sanlee035" target="_blank" rel="noopener" style="color:#6ea8fe;">@sanlee035</a></span></h1>
+<div class="header-row">
+  <h1>GPTServiceLite <span style="font-size:12px;color:#777;font-weight:400;">— tác giả: <a href="https://t.me/sanlee035" target="_blank" rel="noopener" style="color:#6ea8fe;">@sanlee035</a></span></h1>
+  <div>
+    <button id="update-badge" class="update-badge" title="Bấm để kiểm tra cập nhật">v1.0.0</button>
+  </div>
+</div>
 <div class="tabs">
   <div class="tab active" data-tab="change-2fa">Change 2FA</div>
   <div class="tab" data-tab="change-2fa-team">Change 2FA Team / K12</div>
   <div class="tab" data-tab="check-plan">Check Plan</div>
+  <div class="tab" data-tab="get-token">Lấy Access Token</div>
   <div class="tab" data-tab="logs">Logs</div>
   <div class="tab" data-tab="config">Cấu hình</div>
 </div>
@@ -66,11 +111,13 @@
   <div class="col" style="max-width: 640px;">
     <label>Proxy mặc định (mỗi dòng 1 proxy) — lưu vào máy, tự đổ vào các tab khi mở</label>
     <textarea id="config-proxies" placeholder="host:port hoặc user:pass@host:port hoặc http://..."></textarea>
+    <label style="margin-top:10px;">Link kiểm tra cập nhật (tùy chọn — để trống để dùng GitHub Releases)</label>
+    <input id="config-update-url" type="text" placeholder="https://github.com/evel2903/GPTServiceLite/releases/latest/download/portable-update-windows.json" style="width:100%; background:#1c1e24; color:#e6e6e6; border:1px solid #333; border-radius:6px; padding:8px; font:12px/1.4 Consolas, monospace; margin-bottom:12px;">
     <div class="actions">
       <button id="config-save">Lưu</button>
       <span id="config-status" class="status"></span>
     </div>
-    <p class="hint">Lưu vào <code>config.json</code> cạnh app. Sửa proxy trong các tab Change 2FA / Check Plan chỉ áp dụng cho lần chạy đó; muốn nhớ lâu thì lưu ở đây.</p>
+    <p class="hint">Lưu vào <code>config.json</code> cạnh app. Sửa proxy trong các tab Change 2FA / Check Plan / Lấy Access Token chỉ áp dụng cho lần chạy đó; muốn nhớ lâu thì lưu ở đây.</p>
   </div>
 </div>
 
@@ -108,6 +155,42 @@
 
 <div id="panels"></div>
 
+
+<div id="update-modal" class="update-modal-overlay">
+  <div class="update-modal">
+    <h2>
+      <span>Cập nhật GPTServiceLite</span>
+      <button class="close-btn" id="update-modal-close">&times;</button>
+    </h2>
+    <div id="update-modal-body">
+      <div style="font-size:13px; color:#c9d1d9; display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span>Phiên bản hiện tại: <strong id="modal-current-ver">v1.0.0</strong></span>
+        <span>Phiên bản mới: <strong id="modal-latest-ver" style="color:#58a6ff;">--</strong></span>
+      </div>
+      <div id="modal-changelog-wrap">
+        <label>Nội dung cập nhật:</label>
+        <div class="changelog-box">
+          <ul id="modal-changelog-list"></ul>
+        </div>
+      </div>
+      <div id="update-progress-wrap" class="progress-container">
+        <div class="progress-bar-bg">
+          <div id="update-progress-fill" class="progress-bar-fill"></div>
+        </div>
+        <div class="progress-text">
+          <span id="update-progress-msg">Đang tải...</span>
+          <span id="update-progress-percent">0%</span>
+        </div>
+      </div>
+      <div id="update-modal-status" class="status" style="margin-bottom:12px;"></div>
+      <div class="actions" style="justify-content:flex-end;">
+        <button id="btn-update-cancel" class="secondary" style="display:none;">Hủy tải</button>
+        <button id="btn-update-dismiss" class="secondary">Để sau</button>
+        <button id="btn-update-action">Cập nhật ngay</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 function line(parts) { return parts.join('|'); }
 
@@ -121,6 +204,11 @@ function format2fa(r) {
 
 function planLabel(plan) {
   return { free: 'Free', plus: 'Plus', pro: 'Pro', go: 'Go', team: 'Team', business: 'Business', enterprise: 'Enterprise', edu: 'Edu', k12: 'K12', unknown: 'Unknown' }[plan] || plan || 'Unknown';
+}
+
+function formatToken(r) {
+  if (r.ok) return line([r.email, r.accessToken]);
+  return `${r.combo || r.email} | FAIL: ${r.stage ? `[${r.stage}] ` : ''}${r.error || 'unknown'}`;
 }
 
 function formatPlan(r) {
@@ -198,6 +286,13 @@ const TABS = [
     okLabel: 'OK — PLAN', failLabel: 'FAIL',
     isOk: (r) => r.ok,
     formatOne: formatPlan
+  },
+  {
+    key: 'get-token', endpoint: '/api/get-token',
+    hint: 'Chỉ đăng nhập lấy Access Token từ chatgpt.com/api/auth/session (không đổi gì trên tài khoản). Kết quả OK: email|access_token.',
+    okLabel: 'OK — ACCESS TOKEN', failLabel: 'FAIL',
+    isOk: (r) => r.ok,
+    formatOne: formatToken
   }
 ];
 
@@ -337,6 +432,214 @@ document.getElementById('config-save').addEventListener('click', async () => {
     cfgStatus.textContent = 'Lỗi: ' + e.message;
   }
 });
+
+// --- Auto-Update Manager ---
+const updateBadge = document.getElementById('update-badge');
+const updateModal = document.getElementById('update-modal');
+const updateModalClose = document.getElementById('update-modal-close');
+const btnUpdateDismiss = document.getElementById('btn-update-dismiss');
+const btnUpdateAction = document.getElementById('btn-update-action');
+const btnUpdateCancel = document.getElementById('btn-update-cancel');
+const modalCurrentVer = document.getElementById('modal-current-ver');
+const modalLatestVer = document.getElementById('modal-latest-ver');
+const modalChangelogList = document.getElementById('modal-changelog-list');
+const updateProgressWrap = document.getElementById('update-progress-wrap');
+const updateProgressFill = document.getElementById('update-progress-fill');
+const updateProgressMsg = document.getElementById('update-progress-msg');
+const updateProgressPercent = document.getElementById('update-progress-percent');
+const updateModalStatus = document.getElementById('update-modal-status');
+
+let updatePollTimer = null;
+let currentUpdateInfo = null;
+
+function openUpdateModal() {
+  updateModal.classList.add('active');
+}
+function closeUpdateModal() {
+  updateModal.classList.remove('active');
+}
+
+updateBadge.addEventListener('click', () => {
+  openUpdateModal();
+  checkUpdateState(true);
+});
+updateModalClose.addEventListener('click', closeUpdateModal);
+btnUpdateDismiss.addEventListener('click', closeUpdateModal);
+
+async function checkUpdateState(manual = false) {
+  try {
+    const res = await fetch('/api/update/check' + (manual ? '?force=true' : ''));
+    const data = await res.json();
+    currentUpdateInfo = data;
+    renderUpdateUI(data);
+  } catch (err) {
+    if (manual) updateModalStatus.textContent = 'Lỗi kiểm tra cập nhật: ' + err.message;
+  }
+}
+
+function renderUpdateUI(info) {
+  if (!info) return;
+  modalCurrentVer.textContent = 'v' + info.currentVersion;
+  updateBadge.textContent = 'v' + info.currentVersion;
+
+  if (info.updateAvailable) {
+    updateBadge.textContent = '🔔 Bản mới v' + info.latestVersion + '!';
+    updateBadge.classList.add('has-update');
+    modalLatestVer.textContent = 'v' + info.latestVersion;
+
+    modalChangelogList.innerHTML = '';
+    if (info.changelog && info.changelog.length) {
+      info.changelog.forEach((c) => {
+        const li = document.createElement('li');
+        li.textContent = c;
+        modalChangelogList.appendChild(li);
+      });
+    } else {
+      modalChangelogList.innerHTML = '<li>Bản cập nhật tối ưu hóa hiệu năng và sửa lỗi.</li>';
+    }
+
+    if (info.phase === 'ready') {
+      btnUpdateAction.textContent = 'Khởi động lại & Cài đặt';
+      btnUpdateAction.disabled = false;
+      btnUpdateCancel.style.display = 'none';
+      updateProgressWrap.style.display = 'block';
+      updateProgressFill.style.width = '100%';
+      updateProgressPercent.textContent = '100%';
+      updateProgressMsg.textContent = 'Đã sẵn sàng cài đặt!';
+    } else if (info.phase === 'downloading' || info.phase === 'verifying' || info.phase === 'staging') {
+      btnUpdateAction.disabled = true;
+      btnUpdateCancel.style.display = 'inline-block';
+      updateProgressWrap.style.display = 'block';
+      startUpdatePolling();
+    } else {
+      btnUpdateAction.textContent = 'Cập nhật ngay';
+      btnUpdateAction.disabled = false;
+      btnUpdateCancel.style.display = 'none';
+      updateProgressWrap.style.display = 'none';
+    }
+  } else {
+    updateBadge.classList.remove('has-update');
+    updateBadge.textContent = 'v' + info.currentVersion;
+    modalLatestVer.textContent = 'v' + info.currentVersion + ' (Mới nhất)';
+    modalChangelogList.innerHTML = '<li>Bạn đang dùng phiên bản mới nhất!</li>';
+    btnUpdateAction.textContent = 'Kiểm tra lại';
+    btnUpdateAction.disabled = false;
+    btnUpdateCancel.style.display = 'none';
+    updateProgressWrap.style.display = 'none';
+  }
+}
+
+btnUpdateAction.addEventListener('click', async () => {
+  if (!currentUpdateInfo || !currentUpdateInfo.updateAvailable) {
+    btnUpdateAction.disabled = true;
+    updateModalStatus.textContent = 'Đang kiểm tra...';
+    await checkUpdateState(true);
+    btnUpdateAction.disabled = false;
+    return;
+  }
+
+  if (currentUpdateInfo.phase === 'ready') {
+    btnUpdateAction.disabled = true;
+    btnUpdateDismiss.disabled = true;
+    updateModalStatus.textContent = 'Đang áp dụng bản cập nhật và khởi động lại máy chủ...';
+    try {
+      await fetch('/api/update/apply', { method: 'POST' });
+      waitForServerRestart();
+    } catch (e) {
+      updateModalStatus.textContent = 'Lỗi áp dụng: ' + e.message;
+      btnUpdateAction.disabled = false;
+    }
+    return;
+  }
+
+  btnUpdateAction.disabled = true;
+  btnUpdateCancel.style.display = 'inline-block';
+  updateProgressWrap.style.display = 'block';
+  updateModalStatus.textContent = 'Bắt đầu tải bản cập nhật...';
+
+  try {
+    const res = await fetch('/api/update/download', { method: 'POST' });
+    if (!res.ok) throw new Error('Không thể bắt đầu tải');
+    startUpdatePolling();
+  } catch (err) {
+    updateModalStatus.textContent = 'Lỗi: ' + err.message;
+    btnUpdateAction.disabled = false;
+  }
+});
+
+btnUpdateCancel.addEventListener('click', async () => {
+  try {
+    await fetch('/api/update/cancel', { method: 'POST' });
+    stopUpdatePolling();
+    updateModalStatus.textContent = 'Đã hủy tải.';
+    checkUpdateState();
+  } catch (e) {
+    updateModalStatus.textContent = 'Lỗi hủy: ' + e.message;
+  }
+});
+
+function startUpdatePolling() {
+  if (updatePollTimer) clearInterval(updatePollTimer);
+  updatePollTimer = setInterval(async () => {
+    try {
+      const res = await fetch('/api/update/status');
+      const data = await res.json();
+      currentUpdateInfo = data;
+
+      if (data.phase === 'downloading') {
+        updateProgressFill.style.width = data.percent + '%';
+        updateProgressPercent.textContent = data.percent + '%';
+        updateProgressMsg.textContent = 'Đang tải: ' + data.downloadedFormatted + ' / ' + data.totalFormatted;
+      } else if (data.phase === 'verifying') {
+        updateProgressFill.style.width = '100%';
+        updateProgressPercent.textContent = '...';
+        updateProgressMsg.textContent = 'Đang xác thực SHA-256...';
+      } else if (data.phase === 'staging') {
+        updateProgressFill.style.width = '100%';
+        updateProgressPercent.textContent = '...';
+        updateProgressMsg.textContent = 'Đang giải nén file...';
+      } else if (data.phase === 'ready') {
+        stopUpdatePolling();
+        renderUpdateUI(data);
+        updateModalStatus.textContent = 'Bản cập nhật đã sẵn sàng để cài đặt!';
+      } else if (data.phase === 'failed') {
+        stopUpdatePolling();
+        updateModalStatus.textContent = 'Lỗi cập nhật: ' + (data.error || data.message);
+        btnUpdateAction.disabled = false;
+        btnUpdateCancel.style.display = 'none';
+      }
+    } catch {}
+  }, 600);
+}
+
+function stopUpdatePolling() {
+  if (updatePollTimer) {
+    clearInterval(updatePollTimer);
+    updatePollTimer = null;
+  }
+}
+
+function waitForServerRestart() {
+  let attempts = 0;
+  const timer = setInterval(async () => {
+    attempts++;
+    updateModalStatus.textContent = 'Đang đợi máy chủ khởi động lại... (' + attempts + 's)';
+    try {
+      const res = await fetch('/api/health', { cache: 'no-store' });
+      if (res.ok) {
+        clearInterval(timer);
+        updateModalStatus.textContent = 'Khởi động thành công! Đang tải lại trang...';
+        setTimeout(() => window.location.reload(), 1000);
+      }
+    } catch {}
+    if (attempts > 60) {
+      clearInterval(timer);
+      updateModalStatus.textContent = 'Khởi động lại mất nhiều thời gian hơn dự kiến. Vui lòng tải lại trang thủ công.';
+    }
+  }, 1000);
+}
+
+setTimeout(checkUpdateState, 1500);
 </script>
 </body>
 </html>

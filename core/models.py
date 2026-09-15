@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AccountRecord(BaseModel):
@@ -18,6 +18,7 @@ class SessionEntry(BaseModel):
     expires_at: int
     created_at: int
     last_used_at: Optional[int] = None
+    raw_session: dict[str, Any] = Field(default_factory=dict)
 
 
 class SessionCacheEntry(BaseModel):
