@@ -1,6 +1,6 @@
 {
     "name":  "gptservicelite",
-    "version":  "1.1.0",
+    "version":  "1.1.1",
     "private":  true,
     "description":  "Standalone web app for personal/workspace ChatGPT account change-2FA and Check Plan, no auth/db/bot.",
     "main":  "server.js",

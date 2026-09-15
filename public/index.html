@@ -5,84 +5,175 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GPTServiceLite</title>
 <style>
-  :root { color-scheme: dark; }
+  :root {
+    color-scheme: light;
+    --primary: #0284c7;
+    --primary-hover: #0369a1;
+    --primary-light: #e0f2fe;
+    --primary-border: #bae6fd;
+    --bg-page: #f4f8fb;
+    --bg-card: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --border-light: #e2e8f0;
+    --ok-green: #15803d;
+    --ok-bg: #f0fdf4;
+    --ok-border: #bbf7d0;
+    --fail-red: #b91c1c;
+    --fail-bg: #fef2f2;
+    --fail-border: #fecaca;
+  }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 24px; background: #14161a; color: #e6e6e6;
-    font: 14px/1.5 -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    margin: 0; padding: 24px 32px; background: var(--bg-page); color: var(--text-main);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  h1 { font-size: 18px; margin: 0 0 16px; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #333; margin-bottom: 16px; }
+  h1 { font-size: 20px; font-weight: 700; color: #0369a1; margin: 0; display: flex; align-items: center; gap: 8px; }
+  h1 a { color: #0284c7; text-decoration: none; font-weight: 600; }
+  h1 a:hover { text-decoration: underline; color: #0369a1; }
+
+  .header-row {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+    padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;
+  }
+
+  .update-badge {
+    background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 20px; padding: 6px 16px;
+    color: #0369a1; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex;
+    align-items: center; gap: 6px; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(2, 132, 199, 0.08);
+  }
+  .update-badge:hover { background: #bae6fd; border-color: #7dd3fc; color: #0284c7; }
+  .update-badge.has-update {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-color: #0284c7; color: #ffffff; font-weight: 700;
+    animation: pulse-ocean 2s infinite;
+  }
+  @keyframes pulse-ocean {
+    0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(14, 165, 233, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+  }
+
+  .tabs {
+    display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+  }
   .tab {
-    padding: 8px 16px; cursor: pointer; background: #1c1e24; border: 1px solid #333;
-    border-bottom: none; border-radius: 6px 6px 0 0; color: #aaa;
+    padding: 10px 18px; cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0;
+    border-bottom: none; border-radius: 8px 8px 0 0; color: #475569; font-weight: 500;
+    transition: all 0.15s ease;
   }
-  .tab.active { background: #2a2d36; color: #fff; }
+  .tab:hover { background: #f0f9ff; color: #0284c7; border-color: #bae6fd; }
+  .tab.active {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-color: #0284c7; color: #ffffff; font-weight: 600;
+    box-shadow: 0 -2px 6px rgba(2, 132, 199, 0.15);
+  }
+
   .panel { display: none; }
   .panel.active { display: block; }
-  .row { display: flex; gap: 16px; }
-  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-  label { font-size: 12px; color: #999; }
-  label.ok-label { color: #5fd77a; }
-  label.fail-label { color: #e0666b; }
+
+  .row { display: flex; gap: 20px; }
+  .col {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 18px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  }
+
+  label { font-size: 12px; font-weight: 600; color: #475569; }
+  label.ok-label { color: var(--ok-green); }
+  label.fail-label { color: var(--fail-red); }
+
   textarea {
-    width: 100%; height: 380px; background: #1c1e24; color: #e6e6e6; border: 1px solid #333;
-    border-radius: 6px; padding: 8px; font: 12px/1.4 Consolas, monospace; resize: vertical;
+    width: 100%; height: 380px; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
+    border-radius: 8px; padding: 10px; font: 12px/1.45 Consolas, Monaco, monospace; resize: vertical;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  textarea:focus, input[type="text"]:focus {
+    outline: none; border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
   }
   textarea.proxy-box { height: 90px; }
-  .actions { display: flex; gap: 8px; align-items: center; }
-  button {
-    background: #3a6df0; color: #fff; border: none; border-radius: 6px; padding: 8px 16px;
-    cursor: pointer; font-size: 13px;
+  textarea.output-ok {
+    background: var(--ok-bg); border-color: var(--ok-border); color: var(--ok-green);
   }
-  button:disabled { background: #444; cursor: not-allowed; }
-  button.secondary { background: #333; }
-  .status { font-size: 12px; color: #999; }
-  .hint { font-size: 11px; color: #777; margin: 0; }
+  textarea.output-fail {
+    background: var(--fail-bg); border-color: var(--fail-border); color: var(--fail-red);
+  }
 
-  .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .header-row h1 { margin: 0; font-size: 18px; }
-  .update-badge {
-    background: #21262d; border: 1px solid #30363d; border-radius: 14px; padding: 4px 12px;
-    color: #8b949e; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-    transition: all 0.2s ease;
+  input[type="text"] {
+    width: 100%; background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
+    border-radius: 6px; padding: 9px 12px; font: 12px/1.4 Consolas, monospace;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.15s;
   }
-  .update-badge:hover { border-color: #8b949e; color: #c9d1d9; }
-  .update-badge.has-update {
-    background: #1f6feb22; border-color: #388bfd; color: #58a6ff; font-weight: 600;
-    animation: pulse-update 2s infinite;
+
+  .actions { display: flex; gap: 10px; align-items: center; }
+  button {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: #ffffff; border: none; border-radius: 6px; padding: 9px 18px;
+    cursor: pointer; font-size: 13px; font-weight: 600;
+    box-shadow: 0 2px 5px rgba(2, 132, 199, 0.25); transition: all 0.15s ease;
   }
-  @keyframes pulse-update {
-    0% { box-shadow: 0 0 0 0 rgba(56, 139, 253, 0.4); }
-    70% { box-shadow: 0 0 0 6px rgba(56, 139, 253, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(56, 139, 253, 0); }
+  button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    box-shadow: 0 4px 8px rgba(2, 132, 199, 0.35); transform: translateY(-1px);
   }
+  button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2); }
+  button:disabled { background: #e2e8f0 !important; color: #94a3b8 !important; box-shadow: none !important; cursor: not-allowed; }
+  button.secondary {
+    background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  button.secondary:hover:not(:disabled) {
+    background: #f1f5f9; color: #0f172a; border-color: #94a3b8; transform: none;
+  }
+
+  .status { font-size: 12px; color: #0284c7; font-weight: 600; }
+  .hint { font-size: 12px; color: #64748b; margin: 0; line-height: 1.45; }
+
+  /* Modal Update */
   .update-modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none;
-    align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(2px);
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: none;
+    align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px);
   }
   .update-modal-overlay.active { display: flex; }
   .update-modal {
-    background: #161b22; border: 1px solid #30363d; border-radius: 8px; width: 520px;
-    max-width: 90vw; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; width: 520px;
+    max-width: 90vw; padding: 24px; box-shadow: 0 20px 35px rgba(15, 23, 42, 0.15);
   }
-  .update-modal h2 { margin: 0 0 12px; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
-  .update-modal .close-btn { background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+  .update-modal h2 {
+    margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #0f172a;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .update-modal .close-btn {
+    background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; box-shadow: none;
+  }
+  .update-modal .close-btn:hover { color: #0f172a; background: none; transform: none; box-shadow: none; }
   .update-modal .changelog-box {
-    background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px;
-    max-height: 180px; overflow-y: auto; margin: 12px 0; font-size: 13px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px;
+    max-height: 180px; overflow-y: auto; margin: 12px 0; font-size: 13px; color: #334155;
   }
   .update-modal .changelog-box ul { margin: 0; padding-left: 20px; }
-  .update-modal .changelog-box li { margin-bottom: 4px; }
-  .progress-container { margin: 12px 0; display: none; }
-  .progress-bar-bg { background: #21262d; border-radius: 4px; height: 8px; overflow: hidden; width: 100%; }
-  .progress-bar-fill { background: #238636; height: 100%; width: 0%; transition: width 0.2s ease; }
-  .progress-text { font-size: 11px; color: #8b949e; display: flex; justify-content: space-between; margin-top: 4px; }
+  .update-modal .changelog-box li { margin-bottom: 5px; }
+
+  .progress-container { margin: 14px 0; display: none; }
+  .progress-bar-bg { background: #e2e8f0; border-radius: 999px; height: 8px; overflow: hidden; width: 100%; }
+  .progress-bar-fill {
+    background: linear-gradient(90deg, #0ea5e9, #0284c7); height: 100%; width: 0%;
+    border-radius: 999px; transition: width 0.2s ease;
+  }
+  .progress-text { font-size: 11px; color: #64748b; font-weight: 500; display: flex; justify-content: space-between; margin-top: 6px; }
+
+  #logs-list li {
+    padding: 10px 14px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;
+  }
+  #logs-list li:hover { background: #f0f9ff; border-radius: 6px; }
+  #logs-list a { color: #0284c7; text-decoration: none; font-weight: 600; }
+  #logs-list a:hover { text-decoration: underline; color: #0369a1; }
 </style>
 </head>
 <body>
 <div class="header-row">
-  <h1>GPTServiceLite <span style="font-size:12px;color:#777;font-weight:400;">— tác giả: <a href="https://t.me/sanlee035" target="_blank" rel="noopener" style="color:#6ea8fe;">@sanlee035</a></span></h1>
+  <h1>GPTServiceLite <span style="font-size:12px;color:#64748b;font-weight:400;">— tác giả: <a href="https://t.me/sanlee035" target="_blank" rel="noopener" style="color:#0284c7;font-weight:600;">@sanlee035</a></span></h1>
   <div>
     <button id="update-badge" class="update-badge" title="Bấm để kiểm tra cập nhật">v1.0.0</button>
   </div>
@@ -112,7 +203,7 @@
     <label>Proxy mặc định (mỗi dòng 1 proxy) — lưu vào máy, tự đổ vào các tab khi mở</label>
     <textarea id="config-proxies" placeholder="host:port hoặc user:pass@host:port hoặc http://..."></textarea>
     <label style="margin-top:10px;">Link kiểm tra cập nhật (tùy chọn — để trống để dùng GitHub Releases)</label>
-    <input id="config-update-url" type="text" placeholder="https://github.com/evel2903/GPTServiceLite/releases/latest/download/portable-update-windows.json" style="width:100%; background:#1c1e24; color:#e6e6e6; border:1px solid #333; border-radius:6px; padding:8px; font:12px/1.4 Consolas, monospace; margin-bottom:12px;">
+    <input id="config-update-url" type="text" placeholder="https://github.com/evel2903/GPTServiceLite/releases/latest/download/portable-update-windows.json" style="margin-bottom:12px;">
     <div class="actions">
       <button id="config-save">Lưu</button>
       <span id="config-status" class="status"></span>
@@ -163,9 +254,9 @@
       <button class="close-btn" id="update-modal-close">&times;</button>
     </h2>
     <div id="update-modal-body">
-      <div style="font-size:13px; color:#c9d1d9; display:flex; justify-content:space-between; margin-bottom:8px;">
+      <div style="font-size:13px; color:#334155; display:flex; justify-content:space-between; margin-bottom:8px;">
         <span>Phiên bản hiện tại: <strong id="modal-current-ver">v1.0.0</strong></span>
-        <span>Phiên bản mới: <strong id="modal-latest-ver" style="color:#58a6ff;">--</strong></span>
+        <span>Phiên bản mới: <strong id="modal-latest-ver" style="color:#0284c7;">--</strong></span>
       </div>
       <div id="modal-changelog-wrap">
         <label>Nội dung cập nhật:</label>
@@ -409,7 +500,7 @@ async function loadLogs() {
     if (!files.length) { logsList.innerHTML = '<li class="hint">Chưa có log nào.</li>'; return; }
     logsList.innerHTML = files.map((f) => {
       const kb = (f.size / 1024).toFixed(1);
-      return `<li style="padding:6px 0; border-bottom:1px solid #2a2d36;"><a href="/api/logs/${f.name}" download style="color:#6ea8fe;">${f.name}</a> <span class="hint">(${kb} KB)</span></li>`;
+      return `<li style="padding:6px 0; border-bottom:1px solid #e2e8f0;"><a href="/api/logs/${f.name}" download style="color:#0284c7;">${f.name}</a> <span class="hint">(${kb} KB)</span></li>`;
     }).join('');
   } catch (e) {
     logsList.innerHTML = `<li class="hint">Lỗi: ${e.message}</li>`;
